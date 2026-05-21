@@ -1,0 +1,15 @@
+repos:
+  - repo: local
+    hooks:
+      - id: rebuild-playbook-index
+        name: Rebuild playbook/index.toon
+        description: >-
+          Regenerate playbook/index.toon from playbook/*.md frontmatter. Fails
+          the commit if any entry has malformed frontmatter (exit 2) or if the
+          regenerated index differs from the staged copy (pre-commit reports
+          "files were modified by this hook"; re-stage playbook/index.toon and
+          commit again).
+        entry: scripts/rebuild-playbook-index.py
+        language: system
+        files: '^playbook/.*\.md$'
+        pass_filenames: false

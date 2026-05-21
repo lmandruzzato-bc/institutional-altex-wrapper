@@ -1,0 +1,31 @@
+name: Playbook index
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "playbook/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate frontmatter and index
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Regenerate playbook/index.toon
+        run: ./scripts/rebuild-playbook-index.py
+
+      - name: Verify committed index matches regenerated output
+        run: |
+          if ! git diff --exit-code -- playbook/index.toon; then
+            echo "::error file=playbook/index.toon::index.toon is stale — run ./scripts/rebuild-playbook-index.py locally and commit the result."
+            exit 1
+          fi

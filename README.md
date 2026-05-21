@@ -19,10 +19,11 @@ What lives here:
 
 Install on the host before setup:
 
-- [`uv`](https://docs.astral.sh/uv/) — runs the Grafana MCP server via `uvx`.
+- [`uv`](https://docs.astral.sh/uv/) — runs the Grafana MCP server via `uvx`, and runs `scripts/rebuild-playbook-index.py` (PEP 723 single-file script; uv provisions Python + `python-frontmatter` on first invocation).
 - [Node.js](https://nodejs.org/) — provides `npm` and `npx`. `npx` fetches and runs the MySQL MCP server on demand.
 - [`direnv`](https://direnv.net/) — auto-loads `.envrc` on `cd` into the repo.
 - [`jq`](https://jqlang.org/) — required by `scripts/update-additional-dirs.sh`.
+- [`pre-commit`](https://pre-commit.com/) — runs the playbook-index validation hook on each commit. Install with `brew install pre-commit` (macOS), `pipx install pre-commit`, or `uv tool install pre-commit`.
 
 ## Setup
 
@@ -53,6 +54,14 @@ Install on the host before setup:
   ```
 
   After this, simply `cd`ing into the repo exports the vars and runs `scripts/update-additional-dirs.sh`, which rewrites `.claude/settings.local.json` with the configured additional directories (`.claude/settings.local.json` will be created if it doesn't exist).
+
+4. Install the pre-commit hooks (one-time, after `pre-commit` is installed on the host):
+
+  ```sh
+  pre-commit install
+  ```
+
+  This wires `.pre-commit-config.yaml` into `.git/hooks/pre-commit`. On every commit that touches `playbook/*.md`, the hook runs `scripts/rebuild-playbook-index.py`: if any frontmatter is malformed the commit aborts with the offending paths on stderr, and if the regenerated `playbook/index.toon` differs from the staged copy pre-commit reports "files were modified by this hook" — re-stage `playbook/index.toon` and commit again. The same validation runs in CI via `.github/workflows/playbook-index.yml`.
 
 ## Future work
 
