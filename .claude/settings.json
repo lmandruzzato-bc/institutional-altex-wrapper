@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enabledMcpjsonServers": [
+    "grafana",
+    "mysql_clientdb_altex",
+    "mysql_clientdb_account",
+    "mysql_clientdb_instrument"
+  ],
+  "permissions": {
+    "defaultMode": "default",
+    "deny": [
+      "Read(.envrc)"
+    ],
+    "allow": [
+      "mcp__mysql_clientdb_altex__mysql_query"
+    ]
+  }
+}

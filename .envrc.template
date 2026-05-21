@@ -1,0 +1,23 @@
+# --------------------------
+# Grafana 
+# --------------------------
+export GRAFANA_URL=""
+export GRAFANA_USERNAME=""
+export GRAFANA_PASSWORD=""
+
+# --------------------------
+# MySQl Client DB 
+# --------------------------
+export MYSQL_HOST=""
+export MYSQL_PORT=""
+export MYSQL_USER=""
+export MYSQL_PASS=""
+
+# --------------------------
+# Additional Directories
+# --------------------------
+export CLAUDE_ADDITIONAL_DIR_1=""
+export CLAUDE_ADDITIONAL_DIR_2=""
+# ...
+
+"$(pwd)/scripts/update-additional-dirs.sh"

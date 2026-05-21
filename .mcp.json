@@ -1,0 +1,58 @@
+{
+  "mcpServers": {
+    "grafana": {
+      "command": "uvx",
+      "args": [
+        "mcp-grafana",
+        "--disable-write"
+      ],
+      "env": {
+        "GRAFANA_URL": "${GRAFANA_URL}",
+        "GRAFANA_USERNAME": "${GRAFANA_USERNAME}",
+        "GRAFANA_PASSWORD": "${GRAFANA_PASSWORD}"
+      }
+    },
+    "mysql_clientdb_altex": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@benborla29/mcp-server-mysql"
+      ],
+      "env": {
+        "MYSQL_HOST": "${MYSQL_HOST}",
+        "MYSQL_PORT": "${MYSQL_PORT}",
+        "MYSQL_USER": "${MYSQL_USER}",
+        "MYSQL_PASS": "${MYSQL_PASS}",
+        "MYSQL_DB": "Altex"
+      }
+    },
+    "mysql_clientdb_account": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@benborla29/mcp-server-mysql"
+      ],
+      "env": {
+        "MYSQL_HOST": "${MYSQL_HOST}",
+        "MYSQL_PORT": "${MYSQL_PORT}",
+        "MYSQL_USER": "${MYSQL_USER}",
+        "MYSQL_PASS": "${MYSQL_PASS}",
+        "MYSQL_DB": "Account"
+      }
+    },
+    "mysql_clientdb_instrument": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@benborla29/mcp-server-mysql"
+      ],
+      "env": {
+        "MYSQL_HOST": "${MYSQL_HOST}",
+        "MYSQL_PORT": "${MYSQL_PORT}",
+        "MYSQL_USER": "${MYSQL_USER}",
+        "MYSQL_PASS": "${MYSQL_PASS}",
+        "MYSQL_DB": "Instrument"
+      }
+    }
+  }
+}

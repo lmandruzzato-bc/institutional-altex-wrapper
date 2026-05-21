@@ -1,0 +1,7 @@
+.envrc
+.claude/settings.local.json
+
+/runs/*
+!/runs/.gitkeep
+
+.personal/
