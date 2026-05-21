@@ -1,0 +1,2 @@
+[playbook_entries] -> id, title, phase, task_type, transfer_method, exchange, fix_category, error_patterns_joined, last_seen
+binance-withdraw-ip-whitelist, Binance withdrawal fails because transfer-engine egress IP not whitelisted, transfer, external outgoing, *, binance, exchange_config, "IP not in whitelist|-2015", 2026-04-12
