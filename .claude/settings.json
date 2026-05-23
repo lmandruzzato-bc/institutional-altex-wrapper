@@ -12,7 +12,9 @@
       "Read(.envrc)"
     ],
     "allow": [
-      "mcp__mysql_clientdb_altex__mysql_query"
+      "mcp__mysql_clientdb_altex__mysql_query",
+      "mcp__mysql_clientdb_instrument__mysql_query",
+      "mcp__mysql_clientdb_account__mysql_query"
     ]
   }
 }
