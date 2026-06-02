@@ -33,7 +33,7 @@ affected_repos: [<repo names from the four service repos>]
 ## Diagnostic steps
 
 1. <Numbered, concrete: what to query/grep/inspect.>
-2. <Each step references DB tables/columns or LogQL templates from LOGGING-STRATEGY.md.>
+2. <Each step references DB tables/columns or LogQL templates documented inside the per-service log-digger agents (`.claude/agents/settlement-engine-log-digger.md`, `.claude/agents/transfer-engine-log-digger.md`).>
 ...
 
 ## Fix

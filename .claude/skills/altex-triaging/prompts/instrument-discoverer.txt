@@ -1,0 +1,1 @@
+uv run .claude/skills/altex-triaging/scripts/instrument-discoverer.py --output-path runs/<task_id>/instrument-discoverer-<ts>.json --asset <failed_part.asset>

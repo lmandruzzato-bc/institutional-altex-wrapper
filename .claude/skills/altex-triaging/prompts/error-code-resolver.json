@@ -1,0 +1,5 @@
+{
+  "output_path": "runs/<task_id>/error-code-resolver-<ts>.json",
+  "error_code": "<verbatim error code pulled from the failed-phase log field>",
+  "exchange_name": "<exchange_name>"
+}

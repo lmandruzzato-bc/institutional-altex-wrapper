@@ -14,6 +14,11 @@ export MYSQL_USER=""
 export MYSQL_PASS=""
 
 # --------------------------
+# Altonomy Auth Token
+# --------------------------
+export ALT_AUTH_TOKEN=""
+
+# --------------------------
 # Additional Directories
 # --------------------------
 export CLAUDE_ADDITIONAL_DIR_1=""

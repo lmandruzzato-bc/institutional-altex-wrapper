@@ -5,3 +5,5 @@
 !/runs/.gitkeep
 
 .personal/
+
+__pycache__/
