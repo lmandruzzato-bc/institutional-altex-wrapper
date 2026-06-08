@@ -14,11 +14,6 @@ export MYSQL_USER=""
 export MYSQL_PASS=""
 
 # --------------------------
-# Altonomy Auth Token
-# --------------------------
-export ALT_AUTH_TOKEN=""
-
-# --------------------------
 # Additional Directories
 # --------------------------
 export CLAUDE_ADDITIONAL_DIR_1=""
@@ -26,3 +21,12 @@ export CLAUDE_ADDITIONAL_DIR_2=""
 # ...
 
 "$(pwd)/scripts/update-additional-dirs.sh"
+
+# --------------------------
+# Altonomy Auth Token
+# --------------------------
+export ALT_USERNAME=""
+export ALT_PASSWORD=""
+export ALT_1PASSWORD_OTP_PATH=""
+
+eval "$("$(pwd)/scripts/get-alt-auth-token.sh" --export)"

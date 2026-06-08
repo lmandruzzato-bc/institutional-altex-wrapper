@@ -14,6 +14,7 @@ What lives here:
 - `.claude/settings.json` — committed Claude Code settings (enabled MCP servers, baseline permissions).
 - `.envrc.template` — template for the per-developer env file that wires secrets and the list of service repos into the agent.
 - `scripts/update-additional-dirs.sh` — syncs `CLAUDE_ADDITIONAL_DIR_N` env vars into `.claude/settings.local.json` under `permissions.additionalDirectories`.
+- `scripts/get-alt-auth-token.sh` — performs the Altex login + OTP flow and prints (or exports) an `ALT_AUTH_TOKEN` JWT for calling Altex services. See [Altonomy auth token](#altonomy-auth-token).
 
 ## Prerequisites
 
@@ -22,7 +23,8 @@ Install on the host before setup:
 - [`uv`](https://docs.astral.sh/uv/) — runs the Grafana MCP server via `uvx`, and runs `scripts/rebuild-playbook-index.py` (PEP 723 single-file script; uv provisions Python + `python-frontmatter` on first invocation).
 - [Node.js](https://nodejs.org/) — provides `npm` and `npx`. `npx` fetches and runs the MySQL MCP server on demand.
 - [`direnv`](https://direnv.net/) — auto-loads `.envrc` on `cd` into the repo.
-- [`jq`](https://jqlang.org/) — required by `scripts/update-additional-dirs.sh`.
+- [`jq`](https://jqlang.org/) — required by `scripts/update-additional-dirs.sh` and `scripts/get-alt-auth-token.sh`.
+- [`op`](https://developer.1password.com/docs/cli/get-started/) — the 1Password CLI, required by `scripts/get-alt-auth-token.sh` to generate the live TOTP code. Must be signed in (`op signin`) and have access to the vault holding the OTP.
 - [`pre-commit`](https://pre-commit.com/) — runs the playbook-index validation hook on each commit. Install with `brew install pre-commit` (macOS), `pipx install pre-commit`, or `uv tool install pre-commit`.
 
 ## Setup
@@ -44,6 +46,10 @@ Install on the host before setup:
   - Grafana credentials (`GRAFANA_URL`, `GRAFANA_USERNAME`, `GRAFANA_PASSWORD`).
   - MySQL credentials (`MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASS`).
   - One `CLAUDE_ADDITIONAL_DIR_N` per service repo you want the agent to access (`N` = 1, 2, 3, …). Each value is an absolute path to a local checkout. The script stops at the first unset/empty var.
+  - Altonomy auth secrets:
+    - `ALT_USERNAME` — your Altonomy username used to log into Altex.
+    - `ALT_PASSWORD` — your Altonomy password used to log into Altex.
+    - `ALT_1PASSWORD_OTP_PATH` — 1Password secret reference to the field holding the Altex one-time password, in `op://<vault>/<item>/<field>` form (e.g. `op://Employee/Altono/one-time password`).
 
   `.envrc` is the only file you need to edit for local configuration.
 
