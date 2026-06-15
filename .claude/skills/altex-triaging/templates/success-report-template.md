@@ -47,7 +47,7 @@ Generated <UTC iso8601> by /altex-triaging.
 
 ### Loki excerpts
 
-<for each log-digger (`settlement-engine-log-digger` / `transfer-engine-log-digger`) results entry that returned ≥1 hit AND informed the verdict, include the filter label, the LogQL line, and up to 5 representative log lines>
+<sourced from the `altex-investigator` iterations (the up-front log-diggers are SKIPPED). For each investigator `results[]` entry labelled `loki:<…>` that returned ≥1 hit AND informed the verdict, include the label, the LogQL line, and up to 5 representative log lines>
 
 ## Code references
 
@@ -65,14 +65,18 @@ Per-spawn JSON files that fed the synthesis above. Click into any for full per-q
 - `runs/<task_id>/transfer-discoverer-<ts>.json` (Settlement Engine API responses — live + historical)
 - `runs/<task_id>/account-discoverer-<ts>.json`
 - `runs/<task_id>/instrument-discoverer-<ts>.json`
-- `runs/<task_id>/settlement-engine-log-digger-<ts>.json`
-- `runs/<task_id>/transfer-engine-log-digger-<ts>.json`
+- ~~`runs/<task_id>/settlement-engine-log-digger-<ts>.json`~~ — SKIPPED (pending: logging-framework maturity), not produced
+- ~~`runs/<task_id>/transfer-engine-log-digger-<ts>.json`~~ — SKIPPED (pending: logging-framework maturity), not produced
 - `runs/<task_id>/error-code-resolver-<ts>.json` (present only when an error code was detected)
 - `runs/<task_id>/altex-investigator-<ts>.json` (one per investigation-loop iteration)
 
 ## Playbook match
 
-<one of:>
+> Phase 2 (playbook lookup) is currently **SKIPPED — pending playbook population**, so no scoring runs. Until re-enabled this section reads:
+
+- Playbook lookup skipped (pending population). Hypothesis #1 was minted directly from Phase-1 evidence; consider capturing this finding — see prompt below.
+
+<when Phase 2 is re-enabled, this section instead reads one of:>
 - Matched: `<entry_id>` — see `playbook/<entry_id>.md`.
 - No exact match. Signature candidates considered: <list of entry_ids> (none matched on error_patterns).
 - No playbook entry matched. Consider adding one — see prompt below.
@@ -93,7 +97,6 @@ Per-spawn JSON files that fed the synthesis above. Click into any for full per-q
 - Settlement Engine API: `transfer/tasks` (live + historical; which group matched + failed `part_id`/phase)
 - Account API: <one-line summary of each `account_product`/`account` history fetch that informed the verdict>
 - Instrument API: <one-line summary of the `instrument/list` fetch + `asset_code` filter that informed the verdict>
-- Loki (`settlement-engine`): <each `|=` filter that returned ≥1 hit AND informed the verdict>
-- Loki (`transfer-engine`): <ditto>
+- Loki (investigator, on demand — up-front diggers SKIPPED): <each `loki:<…>` filter from the `altex-investigator` iterations that returned ≥1 hit AND informed the verdict>
 - Error code lookup: <`altonomy.core` decode + web searches run> (omit if no code detected)
 - Investigation loop: <per-iter summary — hypothesis label + queries/searches/reads used + verdict>
