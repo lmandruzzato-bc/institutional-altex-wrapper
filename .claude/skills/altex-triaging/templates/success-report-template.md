@@ -17,7 +17,28 @@ Generated <UTC iso8601> by /altex-triaging.
 
 ### Failed part
 
-<compact key/value block from Phase A: part_id, transfer_method, asset, amount, account_src, account_dest, address_src, address_dest, recon_id_src, recon_id_dest, internal_id, txn_id, failed_phase, status, recon_src, recon_dest, start_time, transfer_time>
+(left-aligned two-column table from Phase 1 `failed-part.json`; same field list)
+
+| Field | Value |
+|:---|:---|
+| part_id | <…> |
+| transfer_method | <…> |
+| asset | <…> |
+| amount | <…> |
+| account_src | <…> |
+| account_dest | <…> |
+| address_src | <…> |
+| address_dest | <…> |
+| recon_id_src | <…> |
+| recon_id_dest | <…> |
+| internal_id | <…> |
+| txn_id | <…> |
+| failed_phase | <…> (error field: `<txn_log\|recon_src_log\|recon_dest_log>`) |
+| status | <…> |
+| recon_src | <…> |
+| recon_dest | <…> |
+| start_time | <epoch> (<UTC iso8601>) |
+| transfer_time | <epoch> (<UTC iso8601>) |
 
 **Failed part summary:** <orchestrator-written 1-2 sentence interpretation of the failed part + failed phase, grounded in the `transfer-discoverer` API response (which group matched, the failed-phase triple, what the error log field shows)>
 
