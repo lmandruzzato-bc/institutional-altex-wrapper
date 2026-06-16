@@ -12,7 +12,7 @@ A failed task_id can surface in either the `live` group or the `historical`
 group, and we do not know which. Fetch BOTH, dump each response verbatim, and
 make no decision about which group wins, whether the task exists, or whether an
 HTTP error is fatal — the orchestrator owns all of that. Writes the canonical
-agent-output envelope (`docs/agent-output-format.md`) to --output-path and
+agent-output envelope (`../docs/agent-output-format.md`) to --output-path and
 prints that path.
 
 Usage:

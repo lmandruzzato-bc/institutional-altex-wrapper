@@ -15,7 +15,7 @@ if more than one is active, keep them all. Zero matches after a 2xx is NOT an
 error — it is the evidence that the symbol is unknown to the platform. Pure
 evidence — no interpretation (no parsing `blockchain_network`, no chain-support
 derivation). Writes the canonical agent-output envelope
-(`docs/agent-output-format.md`) to --output-path and prints that path.
+(`../docs/agent-output-format.md`) to --output-path and prints that path.
 
 Usage:
   uv run scripts/instrument-discoverer.py --output-path PATH --asset SYMBOL
