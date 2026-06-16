@@ -1,10 +1,11 @@
 # Agent output format
 
-Every collector run by `/altex-triaging` (sub-agent or script) writes its result as a JSON file to a path the orchestrator pre-computes, then surfaces only that absolute path. The orchestrator reads the file from disk and parses it. This document is the canonical contract for that JSON.
+Every collector run by `/altex-triaging` (sub-agent or script) writes its result as a JSON file to a path the orchestrator pre-computes, then surfaces only that path. The orchestrator reads the file from disk and parses it. This document is the canonical contract for that JSON.
 
 ## File on disk
 
-- **Path pattern.** `runs/<task_id>/<agent>-<UTC-timestamp>.json` (e.g. `runs/4827193/account-discoverer-2026-05-23T143211Z.json`). The orchestrator computes this path per spawn and passes it as `output_path` in the spawn prompt; the agent writes there verbatim.
+- **Where `runs/` lives.** `runs/` is one top-level directory at the **repo root** (the `institutional-altex-wrapper` working tree; git-ignored except `runs/.gitkeep`). The orchestrator runs every script and spawns every sub-agent from that repo root, so it is the one working directory shared by the orchestrator's own writes, the Bash-invoked scripts, and the spawned sub-agents.
+- **Path pattern.** `runs/<task_id>/<agent>-<UTC-timestamp>.json`, **relative to the repo root** — never to the skill directory or to the file that mentions it (e.g. `runs/4827193/account-discoverer-2026-05-23T143211Z.json`). The orchestrator computes this path per spawn and passes it as `output_path` in the spawn prompt; the agent writes there verbatim.
 - **Timestamp.** UTC ISO-8601 with `Z` suffix, no colons in the filename portion (e.g. `2026-05-23T143211Z`). It lives only inside the filename — there is no separate `ts` field anywhere.
 - **Format.** Pretty-printed JSON, 2-space indent, UTF-8, trailing newline.
 - **Layout.** Flat under `runs/<task_id>/`.
@@ -14,7 +15,7 @@ Every collector run by `/altex-triaging` (sub-agent or script) writes its result
 After writing the file, the agent's chat reply MUST be:
 
 - A single line.
-- The bare absolute path the orchestrator passed as `output_path`.
+- The exact `output_path` string the orchestrator passed, verbatim (a repo-root-relative `runs/<task_id>/…` path).
 - No prefix, no preamble, no narration, no markdown, no code-fence.
 
 > [!CRITICAL]

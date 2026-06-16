@@ -18,7 +18,7 @@ active version client-side (`valid_to == null`):
 
 The two sides are independent: a failure on one does not stop the other. Pure
 evidence — no interpretation. Writes the canonical agent-output envelope
-(`docs/agent-output-format.md`) to --output-path and prints that path.
+(`../docs/agent-output-format.md`) to --output-path and prints that path.
 
 Usage:
   uv run scripts/account-discoverer.py --output-path PATH \\
