@@ -11,7 +11,7 @@ You resolve a single transfer-phase error code for `/altex-triaging`. You are sp
 
 ```json
 {
-  "output_path": "<abs path to write>",
+  "output_path": "<repo-root-relative path to write, e.g. runs/<task_id>/error-code-resolver-<ts>.json>",
   "error_code": "<verbatim error code pulled from the failed-phase log field>",
   "exchange_name": "<venue, e.g. BINANCE / OKEXV5 / Wallet>"
 }
@@ -19,35 +19,16 @@ You resolve a single transfer-phase error code for `/altex-triaging`. You are sp
 
 Your job: classify the error code, decode it to the originating exchange-native code, and find the venue's authoritative documentation for that native code. You collect evidence only — no verdict, no `take`. Write the envelope to `output_path` and reply with that bare path, nothing else.
 
-## Background — how Altonomy error codes work
+## Background
 
-`sg-altonomy-exchanges` collapses every venue's inconsistent error format into one 4-digit code vocabulary. Two layers matter:
+Full model in [`docs/error-codes.md`](../../docs/error-codes.md): where the tables live (`ErrorCode` in `altonomy-core` `altonomy/core/exceptions.py`, re-exported by `altonomy/exchanges/exceptions.py`), the `code_reason`/`reason_code` maps, the three reason-string shapes, the encode match layers, the four numeric ranges, and why raw/native is the common case. Read it if a case is ambiguous.
 
-- **`ErrorCode`** lives in the vendored **`altonomy-core`** dependency (NOT in the exchanges source tree). It carries the lookup tables and is read-only reference for you.
-  - `code_reason` — maps a local 4-digit code → a reason string that **embeds the original exchange-native code**, e.g. `"2101"` → `"ApiError(status 400 code=-2010): Account has insufficient balance for requested action."`. Here `2101` is the local code and `-2010` is the venue-native code.
-  - `reason_code` — the reverse map (reason string → local code). You do not need it (you never go native→local).
-  - `decode(code)` returns `code_reason[code]`, or the input unchanged on a miss. `encode(reason, exchange)` is the producer side and has **per-exchange branches** (only `BINANCE`, `HUOBI`, `ABCC`, `GEMINI`) — which is *why* the venue is an input here.
-- **`altonomy/exchanges/exceptions.py`** (source, stable path in `sg-altonomy-exchanges`) holds `ExchangeApiException`, the per-venue response→`(code, message)` parsing. Use it to understand where a given `exchange_name` puts its code/message, and therefore how to read the native code out of a raw string.
+Two facts the procedure leans on:
 
-### The 4-digit range taxonomy
+1. **Local code** → decode via `code_reason[code]`; the embedded `code=C` is the venue-native code (e.g. `"2101"` → `"ApiError(status 400 code=-2010): …"`, so `-2010` is native).
+2. **Most inputs are already native** — no local code, read `code=C` straight out. Only `ApiError(status S code=C): M` carries a native code; `RequestError`/`SystemError`/`ClientError` shapes do not (`native_code` is `null`).
 
-| Range | Meaning |
-|:---|:---|
-| 1xxx | Order-state (not found, already done, in settlement) |
-| 2xxx | Insufficient balance / funds / margin |
-| 3xxx | Rate limiting, dropped connections, auth / signature |
-| 4xxx | Server 5xx, unsupported instrument, trading disabled |
-
-### Reason-string shapes (the producer side)
-
-A local code's decoded reason — and a raw-native string — is one of:
-
-- `ApiError(status S code=C): M` — `C` is the **venue-native code** (e.g. `-2010`, `32025`, `InsufficientFunds`). This is the only shape that carries a native code.
-- `RequestError(status S): R` / `SystemError(status 555): …` / `ClientError(status 444): …` — transport / internal / client errors. **No venue-native code** (`3xxx` connection codes and most `4xxx` fall here).
-
-### Why local vs raw, and the fragility caveat
-
-`encode` returns a local 4-digit code **only when the reason string matches a lookup** (substring rule, one of the 4 per-exchange overrides, or an exact `reason_code` key). On any miss it returns the **raw reason string unchanged** — which still embeds the native code. In practice **raw is the common case**: only ~50 curated errors are mapped, exact-match keys are full literal strings, and templated slots (the `XX`/`AA`/`PP` placeholders in `code_reason`) break exact matching when a venue fills or rewords them. So expect most inputs to already be native.
+Use `altonomy/exchanges/exceptions.py` (`ExchangeApiException`, per-venue response→`(code, message)` parsing) to know where a given `exchange_name` puts its code/message when reading the native code out of a raw string.
 
 ## Procedure
 
@@ -107,6 +88,6 @@ Emit one `web-lookup` unit:
 
 ## Output contract
 
-Write the canonical envelope (`docs/agent-output-format.md`) to `output_path`: pretty JSON, 2-space indent, UTF-8, trailing newline. Two top-level keys, `error` (plain string; `""` when nothing errored) then `results` (the `repo-decode` unit, then the `web-lookup` unit). No `take` key — you are a Phase-1 collector.
+Write the canonical envelope (`.claude/skills/altex-triaging/docs/agent-output-format.md`) to `output_path`: pretty JSON, 2-space indent, UTF-8, trailing newline. Two top-level keys, `error` (plain string; `""` when nothing errored) then `results` (the `repo-decode` unit, then the `web-lookup` unit). No `take` key — you are a Phase-1 collector.
 
-After writing, your entire chat reply MUST be the single bare absolute `output_path` — no prefix, narration, markdown, or code fence.
+After writing, your entire chat reply MUST be the single bare `output_path` the orchestrator passed, verbatim — no prefix, narration, markdown, or code fence.

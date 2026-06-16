@@ -1,0 +1,30 @@
+{
+  "output_path": "runs/<task_id>/altex-investigator-<ts>.json",
+  "hypothesis": "<orchestrator-authored hypothesis to test, verbatim>",
+  "evidence_digest": {
+    "failed_phase": "<transfer | source_recon | dest_recon>",
+    "failed_part": "<compact key fields from runs/<task_id>/failed-part.json: part_id, transfer_method, asset, amount, account_src, account_dest, address_src, address_dest, recon_id_src, recon_id_dest, internal_id, txn_id, status, recon_src, recon_dest, start_time, transfer_time, and the failed-phase error log field>",
+    "error_code": "<resolved error-code summary from error-code-resolver (classification + native_code + meaning), or null>",
+    "account_anomalies": "<short notes from account-discoverer output, or null>",
+    "instrument_anomalies": "<short notes from instrument-discoverer output, or null>",
+    "loki_time_window": {
+      "start_rfc3339": "<orchestrator-computed UTC RFC3339 (…Z), phase-anchored per phases/3-investigation-loop.md: transfer-phase → (transfer_time|start_time) minus pad; recon-phase → transfer_time minus pad; in-flight → start_time minus pad>",
+      "end_rfc3339": "<orchestrator-computed UTC RFC3339 (…Z), phase-anchored: transfer-phase → transfer_time plus pad; recon-phase → start_time plus pad (NOT now); in-flight → now>"
+    }
+  },
+  "evidence_files": [
+    "runs/<task_id>/failed-part.json",
+    "runs/<task_id>/transfer-discoverer-<ts>.json",
+    "runs/<task_id>/account-discoverer-<ts>.json",
+    "runs/<task_id>/instrument-discoverer-<ts>.json",
+    "runs/<task_id>/error-code-resolver-<ts>.json"
+  ],
+  "history": [
+    {
+      "hypothesis": "<prior iteration's hypothesis, verbatim>",
+      "verdict": "proven | disproven | inconclusive",
+      "confidence": 0.0,
+      "key_findings": ["<short claim from that iteration's findings>"]
+    }
+  ]
+}

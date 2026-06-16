@@ -8,7 +8,7 @@ directory on `sys.path[0]`, this sibling module resolves both as an import and
 for its `import requests` (same ephemeral env).
 
 It owns the parts every discoverer shares, so the agent-output contract
-(`docs/agent-output-format.md`) lives in exactly one place:
+(`../docs/agent-output-format.md`) lives in exactly one place:
 
   - env validation (`ALT_AUTH_TOKEN`),
   - a single-shot GET with status/network mapping (`http_get`),
