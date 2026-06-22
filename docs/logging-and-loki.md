@@ -11,9 +11,9 @@ Cross-references:
 - `altex-overview.md` — service split / architecture.
 - `timezones.md` — **everything below is UTC.** All log times (ingest + line body) are UTC; the Loki MCP query bounds (`startRfc3339`/`endRfc3339`) are interpreted as UTC. Convert API epoch fields to RFC3339-UTC (`…Z`) before windowing. The human Grafana UI renders in browser-local time — the "0 results" trap.
 
-Two services in scope:
+2 services in scope:
 
-- **`sg-altonomy-settlement-engine`** — owns transfer state-machine, settlement APIs, `process_transfer` long-running driver. Two entrypoints in scope: `settlement-engine-api` (`uvicorn altonomy.settlement_engine.main:app`) and `settlement-engine-long-running` (`python -m altonomy.settlement_engine.process_transfer`). Runs in Kubernetes (`env="prod"`). Cron jobs, deal subscribers, sync workers, client-report out of scope.
+- **`sg-altonomy-settlement-engine`** — owns transfer state-machine, settlement APIs, `process_transfer` long-running driver. 2 entrypoints in scope: `settlement-engine-api` (`uvicorn altonomy.settlement_engine.main:app`) and `settlement-engine-long-running` (`python -m altonomy.settlement_engine.process_transfer`). Runs in Kubernetes (`env="prod"`). Cron jobs, deal subscribers, sync workers, client-report out of scope.
 - **`sg-altonomy-transfer-engine`** — owns exchange-call proxying (`/transfer/*`) and reconciliation listeners (`/txrecon/*`). Embeds `sg-altonomy-exchanges` library in-process, so all exchange-vendor request/response logs originate from that library, flow through transfer-engine's loguru sinks. Runs on single VM (`server="w04.se1.altono.app"`). For `sg-altonomy-exchanges`, only `CoinMarket` base class + `Binance` concrete adapter characterised; other adapters follow same shapes.
 
 ---
@@ -72,20 +72,20 @@ Pod ownership for settlement-engine narrow selectors:
 
 ### 3.1 Logger setup
 
-Four coexisting logger flavours; **no JSON formatter, no structured-logging library.** Everything stdlib `logging` or loguru-flavoured uvicorn logger, written to stdout (k8s collects via Loki). Practical consequence: **line-prefix format unreliable across lines in same service — match on message body, not prefix.**
+4 coexisting logger flavours; **no JSON formatter, no structured-logging library.** Everything stdlib `logging` or loguru-flavoured uvicorn logger, written to stdout (k8s collects via Loki). Practical consequence: **line-prefix format unreliable across lines in same service — match on message body, not prefix.**
 
 | Logger | Built in | Used by |
 |:---|:---|:---|
-| `logging.getLogger('long_running')` | module level of `process_transfer.py` | Per-phase loop heartbeat lines in `process_transfer.py` (`logger.info("Begin Loop")`, etc.) + five phase-level `logger.error(...)` fallbacks. |
+| `logging.getLogger('long_running')` | module level of `process_transfer.py` | Per-phase loop heartbeat lines in `process_transfer.py` (`logger.info("Begin Loop")`, etc.) + 5 phase-level `logger.error(...)` fallbacks. |
 | `fastapi.logger.logger` (loguru-flavoured uvicorn logger, imported as `fastapi_logger`) | default `logger=` kwarg in ctrl `__init__`s — `TransferCtrl`, `SettlementV2Ctrl`, `ClientActivityReportCtrl` | Every `self.logger.{info,error,exception,warning,debug}` call in ctrl layer. Both API requests AND long-running loop log through this: `process_transfer.py` constructs `TransferLongRunningCtrl(session, token)` without passing `logger=`, so `TransferCtrl`'s default kicks in. |
-| `logging.getLogger('settlement_v2_api')` (exposed as `log`) | module level of `settlements_v2_api.py` | Two `log.error(err)` calls feeding `Invalid Counterparty Ref …` and `Invalid POrtfolio Numbers …`. |
-| `altonomy.loggers.log_utils.get_simple_logger()` (root logger, custom format) — exposed as `api_utils.log` | `common/api_utils.py` | Three `ak_test\|…` aging-settlement debug lines in `settlement_v2_ctrl.py`. Renders `<<--YYYY-MM-DD HH:MM:SS.mmm-->> LEVEL [filename:funcName:lineno] message` format. |
+| `logging.getLogger('settlement_v2_api')` (exposed as `log`) | module level of `settlements_v2_api.py` | 2 `log.error(err)` calls feeding `Invalid Counterparty Ref …` and `Invalid POrtfolio Numbers …`. |
+| `altonomy.loggers.log_utils.get_simple_logger()` (root logger, custom format) — exposed as `api_utils.log` | `common/api_utils.py` | 3 `ak_test\|…` aging-settlement debug lines in `settlement_v2_ctrl.py`. Renders `<<--YYYY-MM-DD HH:MM:SS.mmm-->> LEVEL [filename:funcName:lineno] message` format. |
 
 > **Observed in prod:** `getLogger('long_running')` lines do NOT render bare. Ship with same `<<--YYYY-MM-DD HH:mm:ss.mmm-->> LEVEL [process_transfer.py:loop:NN] <msg>` structured prefix as `api_utils.log` lines, often appear duplicated (one bare line + one prefixed line on `stdout`/`stderr` respectively). Don't rely on prefix to distinguish loggers — filter on message body.
 
 ### 3.2 Long-running loop — `process_transfer.py`
 
-Entrypoint `settlement-engine-long-running`. `main()` runs forever; re-logs into Optimus roughly every 30 min, loops every ~10s (`sleep(10)`) through five phases. Heartbeat lines useful as time anchors — at 10s cadence, 5-minute window gives ~30 iterations.
+Entrypoint `settlement-engine-long-running`. `main()` runs forever; re-logs into Optimus roughly every 30 min, loops every ~10s (`sleep(10)`) through 5 phases. Heartbeat lines useful as time anchors — at 10s cadence, 5-minute window gives ~30 iterations.
 
 These lines emitted by loop driver (`loop()`) through `getLogger('long_running')`:
 
@@ -110,11 +110,11 @@ All driven by `self.logger` (default `fastapi.logger.logger`). Recon-init lifecy
 | Level | Message format | Lifecycle event |
 |:---|:---|:---|
 | EXCEPTION | `Failed to parse recon src log {recon_src_log} to extract fee` | Fee-extraction failure when reading raw exchange response (`_parse_recon_src_log`-style path) |
-| INFO | `Request to start recon for task_id={task_id} part_id={part_id} direction={direction} recon_id={recon_id} succeeded with response {resp}.` | Recon-start success — emitted by `start_or_check_source_recon` (`direction=withdraw`) + two dest variants in `start_or_check_dest_recon` (`direction=deposit`) |
+| INFO | `Request to start recon for task_id={task_id} part_id={part_id} direction={direction} recon_id={recon_id} succeeded with response {resp}.` | Recon-start success — emitted by `start_or_check_source_recon` (`direction=withdraw`) + 2 dest variants in `start_or_check_dest_recon` (`direction=deposit`) |
 | ERROR | Same prefix + `failed with status code {status} and response {resp}. Request will not be retried.` | Recon-start terminal failure (typically 400) |
 | ERROR | Same prefix + `failed with status code {status} and response {resp}. Request will be retried.` | Recon-start retryable failure |
 
-`succeeded` / `not be retried` / `be retried` triplet repeats three times in file (source-side, settlement-style destination, standard destination). `direction=withdraw` ⇒ source recon; `direction=deposit` ⇒ destination recon.
+`succeeded` / `not be retried` / `be retried` triplet repeats 3 times in file (source-side, settlement-style destination, standard destination). `direction=withdraw` ⇒ source recon; `direction=deposit` ⇒ destination recon.
 
 Real prod line (verbatim) for shape reference:
 
@@ -169,7 +169,7 @@ Identifier substring shapes:
 
 ### 3.5 Settlement v2 ctrl — `settlement_v2_ctrl.py`
 
-`settlement-engine-api`. `self.logger` (default `fastapi.logger.logger`), plus three `api_utils.log` debug lines.
+`settlement-engine-api`. `self.logger` (default `fastapi.logger.logger`), plus 3 `api_utils.log` debug lines.
 
 | Level | Message format | Trigger |
 |:---|:---|:---|
@@ -199,7 +199,7 @@ Identifier substring shapes:
 
 ### 3.6 Settlements v2 API — `settlements_v2_api.py`
 
-`settlement-engine-api`. Six call sites — two via `getLogger('settlement_v2_api')`, four via `fastapi.logger.logger`. Both formats bare.
+`settlement-engine-api`. 6 call sites — 2 via `getLogger('settlement_v2_api')`, 4 via `fastapi.logger.logger`. Both formats bare.
 
 | Level | Message format |
 |:---|:---|
@@ -218,7 +218,7 @@ Identifier substring shapes:
 
 ### 4.1 Logger setup + sink split
 
-Service uses **loguru** with three sinks (configured in `logger.py`). No JSON formatter; identifiers live in message body.
+Service uses **loguru** with 3 sinks (configured in `logger.py`). No JSON formatter; identifiers live in message body.
 
 1. `sys.stderr` — records where `extra.recon_id` **NOT** set (FastAPI app, endpoints, exchange-lib calls outside listener thread, unbound on-chain helpers). Filter: `lambda r: not r["extra"].get("recon_id")`.
 2. `~/logs/txengine/altonomy.log` — same no-`recon_id` filter. DEBUG, 500 MB rotation, 7-day retention, lzma-compressed.
@@ -293,7 +293,7 @@ Bound `extra.recon_id` appears as leading `{'recon_id': '<int>'}` literal on eve
 
 ### 4.4 Concrete listeners — `listeners/{internal,withdraw,deposit,on_chain}_recon_listener.py`
 
-Three exchange-based listeners (`InternalReconListener`, `WithdrawReconListener`, `DepositReconListener`) share same shape — call `self.exchange.get_account_transactions(...)`, log raw response, walk it for matches.
+3 exchange-based listeners (`InternalReconListener`, `WithdrawReconListener`, `DepositReconListener`) share same shape — call `self.exchange.get_account_transactions(...)`, log raw response, walk it for matches.
 
 | Level | Message format | Listener (method) |
 |:---|:---|:---|
@@ -320,7 +320,7 @@ Identifier substrings in listener output:
 
 ### 4.5 On-chain sources — `recon_sources/`
 
-Two binding patterns coexist:
+2 binding patterns coexist:
 
 - **Bound (preferred).** `OnChainSource.__init__` accepts `logger=`, falling back to module-level loguru; `OnChainReconListener` passes `self.logger` (recon-bound one) at construction. Most sources carry binding — but in practice only `self.logger` call in whole source layer = shared base line in `OnChainSource._resp_data`; individual chain subclasses rarely log directly.
 - **Unbound (anti-pattern).** `berascan.py` and `blockchair.py` directly `from loguru import logger` and log via module-level (unbound) logger. Lines lose `recon_id` binding, land in `{job="transfer-engine-logs"}`, **not** recon sink. To trace recon involving these chains, search **both** job labels for `tx_id`/`txn_id` value (or chain-name marker, e.g. `berascan -`). *(No `Taostats` source in current codebase.)*
@@ -430,16 +430,16 @@ Binance-specific identifier substrings:
 Properties of system, not to-do list. Investigator should keep in mind whenever "should be there" line fails to show up.
 
 - **No structured logging anywhere.** Both services emit plain text; identifiers embedded in message body (`key=value`, `key={value}` Pydantic/loguru repr, or bare English prose). Loki label extraction does not apply — use `|=` / `|~` substring matching.
-- **Two identifier conventions in settlement-engine.** Some lines use `task_id={n} part_id={n} recon_id={n}` (clean `key=value`); others use `transfer task part {n} of the transfer task {n}` (English prose, no key). When `task_id=` returns nothing, try `transfer task {n}`.
+- **2 identifier conventions in settlement-engine.** Some lines use `task_id={n} part_id={n} recon_id={n}` (clean `key=value`); others use `transfer task part {n} of the transfer task {n}` (English prose, no key). When `task_id=` returns nothing, try `transfer task {n}`.
 - **Stable typos load-bearing — match exactly, don't autocorrect.** Confirmed present verbatim: `End Lopp` (settlement-engine loop end), `occured` (settlement-engine unsettle/settle-deal exceptions, and exchanges `request_with_retry`), `POrtfolio` (`Invalid POrtfolio Numbers`). Note `Exception occurred for settlement match …` spells `occurred` correctly. Berascan `conformations` typo **fixed** to `confirmations` — don't filter on `conformations` any more.
 - **`long_running` logger not bare in prod.** Despite bare `StreamHandler` in code, `getLogger('long_running')` lines ship with `<<--…-->> LEVEL [process_transfer.py:loop:NN] <msg>` structured prefix (often duplicated with bare copy). Filter on message body, never prefix.
 - **Recon sink job label has trailing `-logs`.** Recon-listener output = `{job="transfer-engine-recon-logs"}`; app sink = `{job="transfer-engine-logs"}`. Querying `transfer-engine-recon` (no `-logs`) returns nothing.
-- **Two on-chain sources lose `recon_id` binding.** `berascan.py` and `blockchair.py` use module-level (unbound) loguru logger, so lines land in `{job="transfer-engine-logs"}`, not recon sink. For recon involving these chains, search both job labels for `tx_id`/`txn_id` value.
-- **`OnChainReconListener` has swallowed-argument log call.** Calls `self.logger.error(s.name, self.source_responses.get(s.name))` — two positional args to loguru `.error()`. First becomes message; second (per-source response dict) silently dropped. To see response, find preceding `recv -- {resp.text} request params -- {kwargs}` line from `OnChainSource._resp_data`.
+- **2 on-chain sources lose `recon_id` binding.** `berascan.py` and `blockchair.py` use module-level (unbound) loguru logger, so lines land in `{job="transfer-engine-logs"}`, not recon sink. For recon involving these chains, search both job labels for `tx_id`/`txn_id` value.
+- **`OnChainReconListener` has swallowed-argument log call.** Calls `self.logger.error(s.name, self.source_responses.get(s.name))` — 2 positional args to loguru `.error()`. First becomes message; second (per-source response dict) silently dropped. To see response, find preceding `recv -- {resp.text} request params -- {kwargs}` line from `OnChainSource._resp_data`.
 - **Binance logs vendor HTTP errors at INFO, not ERROR.** `error %s occur while …` emitted via `.info(...)`. Loki alert on "level=ERROR exchange error" will miss most Binance failures — filter on message text, not level. Several other useful lines (`The account of BINANCE is locked!`, `Cannot get the orderbook …`, `failed to retrieve candle data …`, `Binance Earn balances: …`) DEBUG and only present if DEBUG shipped.
 - **No `account_id` on request path.** Plain `account_id=` text rare. In settlement-engine use `account_product_id={n}` or embedded `src_info` Pydantic-repr dict; in transfer-engine only `account_id` occurrence bare in `account_uid for {exchange_name} {account_id}` (no `=`). Deterministic cross-service anchor = `recon_id`.
 - **External clients in settlement-engine log-silent** (Section 3.7). HTTP failures surface only through `response {…}` dict embedded in `Request to start recon for …` lines.
-- **`api_utils.log` separate formatter.** Three `ak_test|…` debug lines use `<<--YYYY-MM-DD HH:mm:ss.mmm-->> LEVEL [file:func:line] message` format. Useful only because `ak_test|` prefix unique — don't generalise format to other lines.
+- **`api_utils.log` separate formatter.** 3 `ak_test|…` debug lines use `<<--YYYY-MM-DD HH:mm:ss.mmm-->> LEVEL [file:func:line] message` format. Useful only because `ak_test|` prefix unique — don't generalise format to other lines.
 - **Recon outcome reasons = dict fields, not log lines.** Transfer-engine recon's `error` / `error_msg` reach Loki only inside `{self.status}` snapshot (INFO, after `breaking!!!`) and high-volume `updated tx recon status to {…}` DEBUG line. Grep for reason substring (e.g. `has no transfer to`), not standalone reason line.
 
 ---

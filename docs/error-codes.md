@@ -1,6 +1,6 @@
 # Altex error codes
 
-Error string pulled off log line (see [`logging-and-loki.md`](./logging-and-loki.md)) or from transfer's `transfer_task_part.txn_log` JSON column (see [`altex-db-schema.md`](./altex-db-schema.md)) is one of two things:
+Error string pulled off log line (see [`logging-and-loki.md`](./logging-and-loki.md)) or from transfer's `transfer_task_part.txn_log` JSON column (see [`altex-db-schema.md`](./altex-db-schema.md)) is one of 2 things:
 
 - a **local 4-digit Altonomy code** (`1xxx`–`4xxx`) — venue error collapsed into Altonomy's canonical vocabulary, or
 - a **raw exchange-native string** — venue's own code/message, passed through unchanged.
@@ -10,7 +10,7 @@ Raw is common case. Only curated set of well-known errors gets local code; every
 ## The decision
 
 1. **Bare 4-digit number** (`1001`, `2141`, `3023`, `4180`)? Then **local code**. Decode to underlying reason string via `code_reason` map (below), read embedded exchange status/code, then web-look-up that native code's meaning at venue.
-2. **Otherwise raw exchange string**, usually already embeds venue's own code. Three shapes recur from how built (see "How a reason string is built"):
+2. **Otherwise raw exchange string**, usually already embeds venue's own code. 3 shapes recur from how built (see "How a reason string is built"):
    - `ApiError(status {status} code={code}): {message}` — `{code}` is **exchange's own error code**, `{status}` the HTTP status.
    - `RequestError(status {status}): {reason}`
    - `SystemError(status 555): ...` / `ClientError(status 444): ...` — Altonomy-internal, not from venue.
@@ -54,7 +54,7 @@ Encoding is **lazy**: happens inside `__str__()` when string being built, not wh
 return ErrorCode.reason_code.get(reason, reason)   # altonomy/core/exceptions.py
 ```
 
-Three match layers; first that hits wins:
+3 match layers; first that hits wins:
 
 | Layer | Trigger |
 |:------|:--------|
@@ -90,7 +90,7 @@ No layer matches → **raw string passes through** unchanged.
 
 ~40 entries. Each key is **full literal reason string**; exact equality required. Examples: `ApiError(status 400 code=-2010): Account has insufficient balance for requested action.` → 2101; `RequestError(status 400): Bad Request` → 4141; `ClientError(status 444): unsupported instrument` → 4001.
 
-## The four numeric ranges
+## The 4 numeric ranges
 
 Source: `altonomy-core` `altonomy/core/exceptions.py` (`ErrorCode.code_reason` / `reason_code`). **Confirmed at source** — dependency present and inspectable. Ranges are loose convention, not strict partitions: few codes sit outside nominal band (e.g. `4121` is auth/tonce error, `4141` generic 400).
 

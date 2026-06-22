@@ -19,11 +19,11 @@ See also:
 
 ## 1. Big picture
 
-Two conventions dominate schema:
+2 conventions dominate schema:
 
 1. **Task workflow around `TransferTask` / `TransferTaskPart`.** Task = operator-requested
    fund movement; Part = one leg of execution. Task carries header status; each Part
-   carries per-leg state — transfer-initiation status plus two recon outcomes (source +
+   carries per-leg state — transfer-initiation status plus 2 recon outcomes (source +
    destination), independently.
 2. **Bitemporal versioning on every business-critical table.** No record updated in
    place. "Update" inserts new row, stamps previous row's `end_time` (or `valid_to`) with
@@ -47,7 +47,7 @@ functionally dead; new code paths write only to `settlement_v2`.
 
 ## 2. The bitemporal versioning model
 
-Most Altex tables follow one of two near-identical patterns for tracking history of a
+Most Altex tables follow one of 2 near-identical patterns for tracking history of a
 logical record. Differ in column naming, not semantics.
 
 ### 2.1 The `start_time` / `end_time` pattern (transfer tables)
@@ -97,7 +97,7 @@ queries and proper temporal joins; settlement DAO uses it for point-in-time read
 > but **no** `valid_to` / `version`. Append-only, not full SCD-2: each row records one
 > match event, never superseded.
 
-### 2.3 Why two patterns
+### 2.3 Why 2 patterns
 
 `transfer_task*` built first with `start_time` / `end_time`; settlement and report tables
 later adopted conventional `valid_from` / `valid_to` SCD-2 terminology. Semantics
@@ -179,7 +179,7 @@ rows. Anchored to `TransferTaskPart` in `models.py`.
 | `ascolumns`, `asignature`    | `json`, `text`   | Row signature (see §7).                                                                                                        |
 
 **The failed-phase triple `(status, recon_src, recon_dest)`.** Part state read as this
-three-field combination, not `status` alone — transfer leg and two recon legs fail
+three-field combination, not `status` alone — transfer leg and 2 recon legs fail
 independently. `TransferTaskPart` exposes helpers in `models.py`:
 
 - `is_completed()` — `status == 'completed'`.
@@ -208,7 +208,7 @@ Key columns beyond standard versioning fields:
 | `settlement_id`, `settlement_ref` | `int`, `varchar(255)` | Logical id and human-readable ref.                                                                |
 | `item_type`                     | `varchar(255)`   | `deal`, `settlement`, `residual settlement`, `Variable Margin`, `Initial Margin`, `test settlement`. Well-populated on active rows (`deal` dominates). |
 | `deal_type`                     | `varchar(255)`   | When sourced from deal. **Stored values mixed-case, differ from `DealType` enum** — live active rows show `Options`, `Execution`, `Fx Spot`, `Standard`, `Cash Flow`; `DealType` enum lists `FX Spot` / `Futures` / `Options` / `Execution` / `Cash Flow`. Match case-insensitively. |
-| `direction`                     | `varchar(255)`   | `premium` (largest bucket on active rows), `outgoing`, `incoming`, `exec fee`, `int_margin`, `int_margin_out`. `SettlementDirection` enum = vocabulary; `SettlementV2Direction` lists only first three. |
+| `direction`                     | `varchar(255)`   | `premium` (largest bucket on active rows), `outgoing`, `incoming`, `exec fee`, `int_margin`, `int_margin_out`. `SettlementDirection` enum = vocabulary; `SettlementV2Direction` lists only first 3. |
 | `leg`                           | `varchar(255)`   | Two-sided deals: `base` or `quote`. `NULL` for one-sided items.                                         |
 | `type`                          | `varchar(255)`   | Coarser type field, partially redundant with `item_type`. Kept for back-compat.                         |
 | `asset`, `amount`, `txn_fee`    | —                | What's owed.                                                                                            |
@@ -233,7 +233,7 @@ and outgoing of same asset/counterparty). One row per matched amount. Anchored t
 
 | Column                                | Purpose                                          |
 | :------------------------------------ | :----------------------------------------------- |
-| `settlement_id_self`, `settlement_id_other` | Two settlement legs being matched.         |
+| `settlement_id_self`, `settlement_id_other` | 2 settlement legs being matched.         |
 | `amount`                              | Matched amount (may be partial).                 |
 | `asset`, `counterparty_ref`           | Matching dimensions.                             |
 | `system_record_time`, `valid_from`    | Audit (no `valid_to` — append-only).             |
@@ -245,8 +245,8 @@ emitting these transfers." Thin grouping construct.
 
 #### `settle` — The settle event
 
-Three columns: `id` (PK), `created_on` (when user submitted), `maker_id` (who). Contents of
-settle event referenced by other two tables in group.
+3 columns: `id` (PK), `created_on` (when user submitted), `maker_id` (who). Contents of
+settle event referenced by other 2 tables in group.
 
 #### `settlement_settle` — Settlement ↔ Settle M:N
 
@@ -494,7 +494,7 @@ running -> completed | partially completed | failed | cancelled
 ```
 
 Source of truth: `TransferTaskStatus` in `enums.py` (`running`, `paused`,
-`partially completed`, `completed`, `failed`, `cancelled`). DB additionally contains two
+`partially completed`, `completed`, `failed`, `cancelled`). DB additionally contains 2
 **legacy values not in enum** — `canceled` (American spelling, historical typo) and
 `rejected` — on handful of old closed-out tasks (single-digit counts as of 2026-06-15).
 New writes always use enum values.

@@ -18,9 +18,9 @@
       "mcp__grafana__list_datasources",
       "mcp__grafana__query_loki_logs",
       "Bash(test -n \"$ALT_AUTH_TOKEN\" && echo \"ALT_AUTH_TOKEN set (len=${#ALT_AUTH_TOKEN})\" || echo \"ALT_AUTH_TOKEN MISSING\")",
-      "Bash(uv run .claude/skills/altex-triaging/scripts/transfer-discoverer.py:*)",
-      "Bash(uv run .claude/skills/altex-triaging/scripts/account-discoverer.py:*)",
-      "Bash(uv run .claude/skills/altex-triaging/scripts/instrument-discoverer.py:*)"
+      "Bash(uv run .claude/skills/altex-triaging/scripts/collect_transfer_evidence.py:*)",
+      "Bash(uv run .claude/skills/altex-triaging/scripts/collect_account_evidence.py:*)",
+      "Bash(uv run .claude/skills/altex-triaging/scripts/collect_instrument_evidence.py:*)"
     ]
   },
   "autoMemoryEnabled": false

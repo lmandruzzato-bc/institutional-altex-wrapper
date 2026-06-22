@@ -1,2 +1,3 @@
 [playbook_entries] -> id, title, phase, task_type, transfer_method, exchange, fix_category, error_patterns_joined, last_seen
-binance-withdraw-ip-whitelist, Binance withdrawal fails because transfer-engine egress IP not whitelisted, transfer, external outgoing, *, binance, exchange_config, "IP not in whitelist|-2015", 2026-04-12
+binance-withdraw-recvwindow-timeout, "Binance withdraw -1021 recvWindow timeout from proxy latency, no re-sign retry", transfer, *, *, binance, code_bug, "-1021|Timestamp for this request is outside of the recvWindow|/sapi/v1/capital/withdraw/apply|3105", 2026-06-22
+bybit-withdraw-address-chain-mismatch, Bybit withdrawal rejected — destination address chain not whitelisted (131002), transfer, internal, MEGAETH, bybit, exchange_config, "Withdraw address chain or destination tag are not equal|131002|/v5/asset/withdraw/create", 2026-06-22

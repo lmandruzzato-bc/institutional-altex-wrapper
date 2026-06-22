@@ -12,7 +12,7 @@ Sibling references:
 
 ## 1. Business context
 
-Altex move assets between accounts and venues for Altonomy institutional desks (OTC, market-making). Two movement categories:
+Altex move assets between accounts and venues for Altonomy institutional desks (OTC, market-making). 2 movement categories:
 
 - **Internal rebalancing.** Move firm own assets — between sub-accounts and main accounts on one exchange, between exchanges, between spot/margin/futures wallets. Invisible to external counterparty.
 - **External OTC settlement.** Deliver asset to external client wallet/account (on-chain transfer or bank wire) once deal booked, and recognise incoming leg from counterparty. One settlement may chain several internal moves before final external withdrawal.
@@ -113,14 +113,14 @@ Parts can fail at any active stage (→ `failed`) or be cancelled by operator ac
 
 ### 2.3 Reconciliation (transfer-engine)
 
-Reconciliation = what make system trustworthy: initiating transfer easy; *proving* it landed is the product. Transfer engine implement recon as long-running listener threads managed by process-wide `ReconManager` (module-level instance `recon_manager` in `altonomy.txengine.recon_manager`). Four listener classes inherit from common base `BaseReconListener` (`class BaseReconListener(ABC, threading.Thread)`):
+Reconciliation = what make system trustworthy: initiating transfer easy; *proving* it landed is the product. Transfer engine implement recon as long-running listener threads managed by process-wide `ReconManager` (module-level instance `recon_manager` in `altonomy.txengine.recon_manager`). 4 listener classes inherit from common base `BaseReconListener` (`class BaseReconListener(ABC, threading.Thread)`):
 
 - **`InternalReconListener`** — poll exchange transfer history for record matching expected currency, amount, time window.
 - **`WithdrawReconListener`** — match by withdrawal id returned at execution time.
 - **`DepositReconListener`** — match incoming deposits on destination exchange.
 - **`OnChainReconListener`** — fan out across on-chain data sources, each checked for transaction matching expected from/to addresses; first successful match wins.
 
-Four `/txrecon` endpoints = `internal`, `withdraw`, `onchain`, `status`/`cancel`. **No `/txrecon/deposit` route** — deposit recon reached through `POST /txrecon/onchain` (`ReconManager.new_onchain_tx_recon` branch to `DepositReconListener` when `account_id` present, else to `OnChainReconListener`).
+4 `/txrecon` endpoints = `internal`, `withdraw`, `onchain`, `status`/`cancel`. **No `/txrecon/deposit` route** — deposit recon reached through `POST /txrecon/onchain` (`ReconManager.new_onchain_tx_recon` branch to `DepositReconListener` when `account_id` present, else to `OnChainReconListener`).
 
 **Recon-id idempotency.** Recon ids deterministic, computed by *settlement engine* (caller), then passed to transfer engine. `TransferLongRunningCtrl._generate_recon_id(task_id, part_id, direction)` return `str(uuid5(RECON_NAMESPACE, f"{task_id}-{part_id}-{direction}").int)`, where `RECON_NAMESPACE` come from `config.RECON_NAMESPACE`. Because id is pure function of task/part/direction, recon poll is idempotent and re-entrant: transfer engine reuse supplied `recon_id` if present (`ReconManager._generate_recon_id`), so restarting either service does not lose state — next tick query same id and resume. (If caller omit id, transfer engine fall back to random `str(uuid4().int)`.)
 
@@ -143,12 +143,12 @@ For settlement-type tasks, completion does not end workflow — deal must be mar
 
 **Type:** Python library (Poetry-packaged). Not service; consumed by other services. Package root `altonomy/exchanges/`.
 
-**Surface area:** roughly **55 concrete exchange adapters** (about 57 `CoinMarket`-descendant classes counting two scaffolds, `Myexchange` in `TEMPLATE.py` and `Tinyex`; spread across ~59 adapter-bearing modules). Earlier "~78" figure = overcount.
+**Surface area:** roughly **55 concrete exchange adapters** (about 57 `CoinMarket`-descendant classes counting 2 scaffolds, `Myexchange` in `TEMPLATE.py` and `Tinyex`; spread across ~59 adapter-bearing modules). Earlier "~78" figure = overcount.
 
 **Core abstractions:**
 
 - `CoinMarket` (`altonomy.exchanges.CoinMarket`, ~2,800 LOC) — abstract base every adapter extend (`class CoinMarket(IWallet)`). Define contract for market data, balances, orders, signing, error handling, rate limiting, response caching (`CachedEndpoint`/`TTLCache`), Redis fallback (`RedisFallback`).
-- Three interfaces in `altonomy.exchanges.Wallet` — `ITransactionHistory`, `ITransferSubAccount`, `IWithdrawal` — capturing operations Altex need: pull transaction history, move funds between sub-accounts, initiate on-chain withdrawals. (`IWallet` also defined here.)
+- 3 interfaces in `altonomy.exchanges.Wallet` — `ITransactionHistory`, `ITransferSubAccount`, `IWithdrawal` — capturing operations Altex need: pull transaction history, move funds between sub-accounts, initiate on-chain withdrawals. (`IWallet` also defined here.)
 - Factory `Exchange(exchange_name, ACCESS_KEY="", SECRET_KEY="", …)` in `altonomy.exchanges.__init__` dynamically import concrete class by name (`importlib.import_module("altonomy.exchanges.{name}")` then `getattr(module, name)`). Sibling `ExchangeClass(name)` return class without instantiating.
 
 **Why it matter:** transfer engine treat every venue uniformly. Binance withdrawal call `Binance().make_withdrawal(...)`; OKX sub/main move call `Okex().transfer_funds(...)` (OKX class literally named `Okex`; newer `Okexv5` also exists). Adding venue = writing new adapter against these interfaces — no settlement-engine or transfer-engine changes.
@@ -169,13 +169,13 @@ For settlement-type tasks, completion does not end workflow — deal must be mar
 
 **Authentication.** Every route handler first call = `validate_token(alt_auth_token, [scope])` (`altonomy.txengine.utils`), which POST to `{ALT_CLIENT_ENDPOINT}/auth_api/auth/verify`. Scopes single-valued per route, drawn from `altex_admin_read`, `altex_admin_create`, `altex_admin_update`.
 
-**Routing note.** Two mounted routers use prefixes `/transfer` and `/txrecon` only — **no `/transfer_engine_api/` mount prefix**.
+**Routing note.** 2 mounted routers use prefixes `/transfer` and `/txrecon` only — **no `/transfer_engine_api/` mount prefix**.
 
-**Logging.** Loguru, two file sinks under `~/logs/txengine/`: general sink (`altonomy.log`) and recon-listener sink (`recon_listeners.log`, bound by `recon_id`). Both rotate at 500 MB, retain 7 days, compress with LZMA. See [`logging-and-loki.md`](./logging-and-loki.md).
+**Logging.** Loguru, 2 file sinks under `~/logs/txengine/`: general sink (`altonomy.log`) and recon-listener sink (`recon_listeners.log`, bound by `recon_id`). Both rotate at 500 MB, retain 7 days, compress with LZMA. See [`logging-and-loki.md`](./logging-and-loki.md).
 
 ### 3.3 `sg-altonomy-settlement-engine` — business workflow & persistence
 
-**Type:** Python / FastAPI / SQLAlchemy / MySQL / Redis. One codebase, multiple processes; two in scope here.
+**Type:** Python / FastAPI / SQLAlchemy / MySQL / Redis. One codebase, multiple processes; 2 in scope here.
 
 #### `settlement-engine-api` (port 8031)
 
@@ -196,7 +196,7 @@ Entrypoint `uvicorn altonomy.settlement_engine.main:app`. REST surface mount `ap
 
 #### `settlement-engine-long-running`
 
-Single-instance polling loop, 10-second tick, drive every active `TransferTaskPart` through its state machine (see §2.2 for four ordered functions).
+Single-instance polling loop, 10-second tick, drive every active `TransferTaskPart` through its state machine (see §2.2 for 4 ordered functions).
 
 **Part** state machine (`TransferTaskPartStatus`, stored as lowercase string values shown):
 
@@ -343,7 +343,7 @@ Same flow, with different `transfer_method` values, handle internal-only rebalan
 
 **Idempotency.** Recon ids = deterministic UUIDs derived from `task_id`, `part_id`, direction (computed in settlement engine, reused by transfer engine). Restarting any service does not duplicate work: next recon call treated as status query for existing job.
 
-**Authentication.** Optimus `auth_api` mint JWTs that flow as `alt-auth-token` (case-insensitive) through every service. RBAC uniform: three scopes — `altex_admin_read`, `altex_admin_create`, `altex_admin_update` — gate routes, verified remotely against `/auth_api/auth/verify`.
+**Authentication.** Optimus `auth_api` mint JWTs that flow as `alt-auth-token` (case-insensitive) through every service. RBAC uniform: 3 scopes — `altex_admin_read`, `altex_admin_create`, `altex_admin_update` — gate routes, verified remotely against `/auth_api/auth/verify`.
 
 **Credentials.** Exchange API keys never in code or env. Transfer engine fetch them from HashiCorp Vault on demand, scoped per `account_id`, and cache resulting adapter. Rotating key = Vault operation, no deploy.
 

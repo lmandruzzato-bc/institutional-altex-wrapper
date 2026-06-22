@@ -1,1 +1,1 @@
-uv run .claude/skills/altex-triaging/scripts/transfer-discoverer.py --output-path runs/<task_id>/transfer-discoverer-<ts>.json --task-id <task_id>
+uv run .claude/skills/altex-triaging/scripts/collect_transfer_evidence.py --output-path runs/<task_id>/collect-transfer-evidence-<ts>.json --task-id <task_id>

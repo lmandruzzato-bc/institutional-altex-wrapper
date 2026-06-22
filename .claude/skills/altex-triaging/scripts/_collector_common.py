@@ -1,14 +1,14 @@
 """Shared helpers for the read-only Altex discoverer scripts.
 
 This module is imported by the thin per-entity scripts (transfer-, account-,
-instrument-discoverer). It is NOT runnable on its own: it has no shebang and no
+collect_instrument_evidence). It is NOT runnable on its own: it has no shebang and no
 PEP-723 dependency block. The importing script declares `requests` in its own
 inline metadata, and because `uv run --script <file>` puts the script's own
 directory on `sys.path[0]`, this sibling module resolves both as an import and
 for its `import requests` (same ephemeral env).
 
 It owns the parts every discoverer shares, so the agent-output contract
-(`../docs/agent-output-format.md`) lives in exactly one place:
+(`.claude/skills/altex-triaging/docs/agent-output-format.md`) lives in exactly one place:
 
   - env validation (`ALT_AUTH_TOKEN`),
   - a single-shot GET with status/network mapping (`http_get`),
@@ -19,6 +19,7 @@ It owns the parts every discoverer shares, so the agent-output contract
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -64,6 +65,13 @@ def require_env() -> tuple[str, str]:
     if not token:
         die("missing required env var: ALT_AUTH_TOKEN", 1)
     return token
+
+
+def add_output_arg(parser: argparse.ArgumentParser) -> None:
+    """Register the shared, identical `--output-path` arg every discoverer takes."""
+    parser.add_argument(
+        "--output-path", required=True, help="Absolute path to write the JSON envelope."
+    )
 
 
 def build_url(base: str, path: str, params: dict | None = None) -> str:

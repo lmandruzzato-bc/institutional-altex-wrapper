@@ -1,29 +1,27 @@
 # Phase 1 — Evidence Collection
 
-Gather every piece of evidence the rest of the triage will reason over. The orchestrator first runs the `transfer-discoverer` script to fetch the transfer record, reads that output to reconcile which group carries the row and pin the single failed part, then fans out two parallel collectors (and one conditional collector) to enrich that part with account, instrument, and exchange-error-code context.
+Gather every piece of evidence the rest of the triage will reason over. The orchestrator first runs the `collect_transfer_evidence` script to fetch the transfer record, reads that output to reconcile which group carries the row and pin the single failed part, then fans out 2 parallel collectors (and one conditional collector) to enrich that part with account, instrument, and exchange-error-code context.
 
 > [!NOTE]
 > Up-front log collection is deferred. The `settlement-engine-log-digger` and `transfer-engine-log-digger` sub-agents are **SKIPPED (pending: logging-framework maturity)**; Phase 3 (`altex-investigator`) pulls Loki logs on demand to test hypotheses instead. Nothing below is removed — the digger rows stay banner-marked so re-enabling is a restore.
 
-Collectors are of two kinds: deterministic **scripts** run via Bash (`transfer-discoverer`, `account-discoverer`, `instrument-discoverer`) and **sub-agents** spawned by `subagent_type` (`error-code-resolver`; the `settlement-engine-log-digger` / `transfer-engine-log-digger` diggers are SKIPPED — see the note above). Both write the same canonical envelope (`../docs/agent-output-format.md`); they differ only in how they are invoked and how a setup failure surfaces.
+Collectors are of 2 kinds: deterministic **scripts** run via Bash (`collect_transfer_evidence`, `collect_account_evidence`, `collect_instrument_evidence`) and **sub-agents** spawned by `subagent_type` (`error-code-resolver`; the `settlement-engine-log-digger` / `transfer-engine-log-digger` diggers are SKIPPED — see the note above). Both write the same canonical envelope (`.claude/skills/altex-triaging/docs/agent-output-format.md`); they differ only in how they are invoked and how a setup failure surfaces.
 
 This phase is the prerequisite for everything downstream: Phase 2 (currently **SKIPPED — pending playbook population**) would score the playbook against the evidence collected here, and Phase 3 investigates hypotheses seeded by it.
 
-## Step 1 — Fetch the transfer record (`transfer-discoverer`)
+## Step 1 — Fetch the transfer record (`collect_transfer_evidence`)
 
-Run `transfer-discoverer` **first, alone**, before any fan-out. It fetches the transfer task from both the `live` and `historical` groups and dumps both responses verbatim — it does not pick a winner or judge the result.
+Run `collect_transfer_evidence` **first, alone**, before any fan-out. It fetches the transfer task from both the `live` and `historical` groups and dumps both responses verbatim — it does not pick a winner or judge the result.
 
-Run it per the canonical contract (`../docs/agent-output-format.md`): the orchestrator pre-computes `output_path`, reads `../prompts/transfer-discoverer.txt`, fills `output_path` and the `<task_id>` placeholder, and runs the resulting command via the Bash tool. The script writes the envelope to `runs/<task_id>/transfer-discoverer-<ts>.json` and prints that path. **A non-zero exit (bad args, missing env, unwritable path) means no file was written — treat it as a spawn-layer failure and abort** (`../SKILL.md` § Abort protocol).
-
-`transfer-discoverer`'s output is the one Phase 1 evidence file the orchestrator reads to drive control flow (Steps 1-reconcile through 3).
+The orchestrator pre-computes `output_path`, reads `.claude/skills/altex-triaging/prompts/collect_transfer_evidence.txt`, fills `output_path` and the `<task_id>` placeholder, and runs the resulting command via the Bash tool. The script writes the envelope to `runs/<task_id>/collect-transfer-evidence-<ts>.json` and prints that path. **A non-zero exit (bad args, missing env, unwritable path) means no file was written — treat it as a spawn-layer failure and abort** (`.claude/skills/altex-triaging/SKILL.md` section `## Abort protocol`).
 
 ### Reconcile (orchestrator-inline)
 
-A failed `task_id` can surface in either the `live` group (status ∈ `Running`/`Paused`/`Failed`) or the `historical` group (status ∈ `PartiallyCompleted`/`Completed`/`Failed`/`Cancelled`). The script fetched both; the orchestrator decides what the two `results[]` entries (`live`, `historical`) mean. Each entry carries `extra.http_status` and `rows` (the response `list` of task objects).
+A failed `task_id` can surface in either the `live` group (status ∈ `Running`/`Paused`/`Failed`) or the `historical` group (status ∈ `PartiallyCompleted`/`Completed`/`Failed`/`Cancelled`). The script fetched both; the orchestrator decides what the 2 `results[]` entries (`live`, `historical`) mean. Each entry carries `extra.http_status` and `rows` (the response `list` of task objects).
 
 | Condition (across the `live` + `historical` entries) | Handling |
 |:---|:---|
-| Network error (`http_status == 0`), or any non-2xx other than 401/403 (incl. 5xx) on either entry | **Infra failure** → abort (`../SKILL.md` § Abort protocol). |
+| Network error (`http_status == 0`), or any non-2xx other than 401/403 (incl. 5xx) on either entry | **Infra failure** → abort (`.claude/skills/altex-triaging/SKILL.md` section `## Abort protocol`). |
 | `401` / `403` on either entry | **Infra failure**, with the hint that `ALT_AUTH_TOKEN` is missing/expired/under-scoped. |
 | Both entries are 2xx with empty `rows` | **Not infra.** Task not found. Abort cleanly: print `[<task_id>] No transfer task found in live or historical — check the id.` No fan-out, no report, no playbook prompt. |
 | Exactly one entry is 2xx with non-empty `rows` | Use it; discard the empty one. Record which group matched (signal: `live` = in-flight, `historical` = terminal). |
@@ -31,11 +29,11 @@ A failed `task_id` can surface in either the `live` group (status ∈ `Running`/
 The matched entry's `rows` holds the transfer task object (with its `parts`). That is the input to Step 2.
 
 > [!NOTE]
-> A non-zero exit from the `transfer-discoverer` script (malformed invocation / missing `--task-id`, or missing env) writes no file and is the generic spawn-layer abort signal per `../SKILL.md` § Abort protocol. On a clean (exit 0) run the envelope always carries both the `live` and `historical` entries.
+> A non-zero exit from the `collect_transfer_evidence` script (malformed invocation / missing `--task-id`, or missing env) writes no file and is the generic spawn-layer abort signal per `.claude/skills/altex-triaging/SKILL.md` section `## Abort protocol`. On a clean (exit 0) run the envelope always carries both the `live` and `historical` entries.
 
 ## Step 2 — Identify the failed part (orchestrator-inline)
 
-**Sequential invariant.** Within a `TransferTask`, parts execute strictly in `part_id` order; within a part, the three phases (`transfer`, `source_recon`, `dest_recon`) also execute in order. At any moment there is **exactly one failed part with exactly one failed phase**. There is no fan-out across parts or phases.
+**Sequential invariant.** Within a `TransferTask`, parts execute strictly in `part_id` order; within a part, the 3 phases (`transfer`, `source_recon`, `dest_recon`) also execute in order. At any moment there is **exactly one failed part with exactly one failed phase**. There is no fan-out across parts or phases.
 
 Walk the matched task's `parts[]` in ascending `part_id` order and select the first row whose `(status, recon_src, recon_dest)` triple matches one of these patterns:
 
@@ -47,12 +45,12 @@ Walk the matched task's `parts[]` in ascending `part_id` order and select the fi
 
 Note the literal single space in `recon confirmed`, `manual confirmed`, `transfer initiated`.
 
-If no part matches any pattern (e.g. the task is fully `completed`): **not infra.** Abort cleanly: print `[<task_id>] No failed part (task status=<x>) — nothing to triage.` Hard-stop even when developer context is present. No fan-out, no report, no playbook prompt.
+If no part matches any pattern (e.g. the task is fully `completed`): **not infra.** Abort cleanly: print `[<task_id>] No failed part (task status=<x>) — nothing to triage.` Hard-stop even when user context is present. No fan-out, no report, no playbook prompt.
 
 The matched row is **the failed part**; its failed phase pins the single **error log field** to inspect. Extract the failed part's key fields for seeding the fan-out: `part_id`, `transfer_method`, `asset`, `amount`, `account_src`, `account_dest`, `address_src`, `address_dest`, `recon_id_src`, `recon_id_dest`, `internal_id`, `txn_id`, `start_time`, `transfer_time`, plus the failed phase and its error log field.
 
 > [!NOTE]
-> The time fields (`start_time`, `transfer_time`, `task_create_time`) are **Unix epoch seconds in UTC**. They become the UTC bounds for any log query downstream — Phase 3 converts them to RFC3339-UTC for the investigator's Loki window, and the (currently SKIPPED) log-diggers would do the same for their `[start_time, now]` window. Loki and the altex-DB are UTC end-to-end; the only local-offset traps are the human Grafana UI and bare DB `datetime` reads. See `docs/timezones.md`.
+> The time fields (`start_time`, `transfer_time`, `task_create_time`) are **Unix epoch seconds in UTC**. They become the UTC bounds for any log query downstream — Phase 3 converts them to RFC3339-UTC for the investigator's Loki window, and the (currently SKIPPED) log-diggers would do the same for their `[start_time, end_time]` window. Loki and the altex-DB are UTC end-to-end.
 
 Dump the failed part (error log field included) in a file called `failed-part.json` in the `runs/<task_id>` directory.
 
@@ -74,38 +72,24 @@ Scan the failed-phase log's error field for an error code — a local 4-digit co
 
 ## Step 4 — Fan-out
 
-Once the failed part and phase are pinned, launch the enrichment collectors **concurrently — in a single orchestrator message with parallel tool calls** (Bash for the scripts, Agent spawns for the sub-agents). Two are always-on; the third is conditional on Step 3. (The two log-diggers below are SKIPPED — Phase 3 covers logs in the interim.)
+Once the failed part and phase are pinned, launch the enrichment collectors **concurrently — in a single orchestrator message with parallel tool calls** (Bash for the scripts, Agent spawns for the sub-agents). 2 are always-on; the third is conditional on Step 3. (The 2 log-diggers below are SKIPPED — Phase 3 covers logs in the interim.)
 
 | Collector | Kind | Seed (from the failed part) | Persisted output |
 |:---|:---|:---|:---|
-| `account-discoverer` | script | `account_src`, `account_dest` | `runs/<task_id>/account-discoverer-<ts>.json` |
-| `instrument-discoverer` | script | `asset` | `runs/<task_id>/instrument-discoverer-<ts>.json` |
-| `settlement-engine-log-digger` **— SKIPPED (pending: logging-framework maturity)** | agent | `task_id`, `part_id`, `internal_id`, `recon_id_src`, `recon_id_dest`, time window `[start_time, now]` | `runs/<task_id>/settlement-engine-log-digger-<ts>.json` |
-| `transfer-engine-log-digger` **— SKIPPED (pending: logging-framework maturity)** | agent | `internal_id`, `txn_id`, `recon_id_src`, `recon_id_dest`, time window `[start_time, now]` | `runs/<task_id>/transfer-engine-log-digger-<ts>.json` |
+| `collect_account_evidence` | script | `account_src`, `account_dest` | `runs/<task_id>/collect-account-evidence-<ts>.json` |
+| `collect_instrument_evidence` | script | `asset` | `runs/<task_id>/collect-instrument-evidence-<ts>.json` |
+| `settlement-engine-log-digger` **— SKIPPED** | agent | `task_id`, `part_id`, `internal_id`, `recon_id_src`, `recon_id_dest`, time window `[start_time, end_time]` | `runs/<task_id>/settlement-engine-log-digger-<ts>.json` |
+| `transfer-engine-log-digger` **— SKIPPED** | agent | `internal_id`, `txn_id`, `recon_id_src`, `recon_id_dest`, time window `[start_time, end_time]` | `runs/<task_id>/transfer-engine-log-digger-<ts>.json` |
 | `error-code-resolver` *(only if Step 3 found an error code)* | agent | raw error string, `exchange_name` | `runs/<task_id>/error-code-resolver-<ts>.json` |
 
-All write the canonical agent-output envelope (`../docs/agent-output-format.md`) to a path the orchestrator pre-computes, and all surface that same path. The two kinds differ only in invocation and in how a setup failure surfaces:
+The orchestrator does not read the agent definition files (Rule 1) and treats each script as a black box behind its flags, so the per-collector input keys and their failed-part source mappings live in the prompt templates under `.claude/skills/altex-triaging/prompts/`. Each template carries `<...>` placeholders. For each collector the orchestrator reads the template, fills `output_path` with the value it pre-computed per the canonical contract, and substitutes every `<...>` placeholder with the failed-part value (using JSON `null` where the source field is absent).
 
-- **Scripts** (`account-discoverer`, `instrument-discoverer`) — the orchestrator fills the `../prompts/<name>.txt` command template and runs it via the Bash tool; the script prints the path and signals a setup failure with a **non-zero exit** (no file written).
-- **Sub-agents** (`error-code-resolver`; the `settlement-engine-log-digger` / `transfer-engine-log-digger` diggers are SKIPPED) — the orchestrator spawns them by `subagent_type` with the filled `../prompts/<name>.json` object as the bare prompt; the agent returns the bare path.
+- `collect_account_evidence` → `.claude/skills/altex-triaging/prompts/collect_account_evidence.txt` *(script)*
+- `collect_instrument_evidence` → `.claude/skills/altex-triaging/prompts/collect_instrument_evidence.txt` *(script)*
+- `settlement-engine-log-digger` → `.claude/skills/altex-triaging/prompts/settlement-engine-log-digger.json` *(agent)* — **SKIPPED**
+- `transfer-engine-log-digger` → `.claude/skills/altex-triaging/prompts/transfer-engine-log-digger.json` *(agent)* — **SKIPPED**
+- `error-code-resolver` → `.claude/skills/altex-triaging/prompts/error-code-resolver.json` *(agent)*
 
-The orchestrator does not read the agent definition files (Rule 1) and treats each script as a black box behind its flags, so the per-collector input keys and their failed-part source mappings live in the prompt templates under `../prompts/`. Each template carries `<...>` placeholders. For each collector the orchestrator reads the template, fills `output_path` with the value it pre-computed per the canonical contract, and substitutes every `<...>` placeholder with the failed-part value (using JSON `null` where the source field is absent — **except `account-discoverer`'s `<failed_part.account_dest>`, which is always present on a failed part; the script requires it**).
+## Success evaluation
 
-- `account-discoverer` → `../prompts/account-discoverer.txt` *(script)*
-- `instrument-discoverer` → `../prompts/instrument-discoverer.txt` *(script)*
-- `settlement-engine-log-digger` → `../prompts/settlement-engine-log-digger.json` *(agent)* — **SKIPPED (pending: logging-framework maturity)**
-- `transfer-engine-log-digger` → `../prompts/transfer-engine-log-digger.json` *(agent)* — **SKIPPED (pending: logging-framework maturity)**
-- `error-code-resolver` → `../prompts/error-code-resolver.json` *(agent)*
-
-## Output / handoff to Phase 2
-
-On success this phase yields, under `runs/<task_id>/`:
-
-- `transfer-discoverer-<ts>.json` — Settlement Engine API responses (live + historical), canonical agent-output envelope.
-- `account-discoverer-<ts>.json`
-- `instrument-discoverer-<ts>.json`
-- `settlement-engine-log-digger-<ts>.json` — **SKIPPED (pending: logging-framework maturity)**, not produced.
-- `transfer-engine-log-digger-<ts>.json` — **SKIPPED (pending: logging-framework maturity)**, not produced.
-- `error-code-resolver-<ts>.json` *(only if an error code was detected)*.
-
-The required success set is now the **two always-on scripts** (`account-discoverer`, `instrument-discoverer`) plus the conditional `error-code-resolver` — that is what "all collectors succeeded" means while the diggers are skipped. The orchestrator holds the extracted failed-part fields + failed phase in memory for Phase 3 (Phase 2 is skipped). Any collector failure — a sub-agent spawn that times out, a script that exits non-zero, or any collector that persists a file with empty `results` — triggers the abort protocol (`../SKILL.md` § Abort protocol).
+The required success set is now the **2 always-on scripts** (`collect_account_evidence`, `collect_instrument_evidence`) plus the conditional `error-code-resolver` — that is what "all collectors succeeded" means while the diggers are skipped. The orchestrator holds the extracted failed-part fields + failed phase in memory for Phase 3 (Phase 2 is skipped). Any collector failure — a sub-agent spawn that times out, a script that exits non-zero, or any collector that persists a file with empty `results` — triggers the abort protocol (`.claude/skills/altex-triaging/SKILL.md` section `## Abort protocol`).

@@ -8,7 +8,7 @@ The run aborted before reaching a verdict. No synthesis was attempted on partial
 
 Aborted at **Phase <N> (<phase name>)**. `<component>` did not return usable evidence.
 
-`<component>` is the orchestrator's `curl` to the Settlement Engine API, or the named sub-agent that failed (`account-discoverer`, `instrument-discoverer`, a log-digger, `error-code-resolver`, or `altex-investigator`).
+`<component>` is the orchestrator's `curl` to the Settlement Engine API, or the named sub-agent that failed (`collect_account_evidence`, `collect_instrument_evidence`, a log-digger, `error-code-resolver`, or `altex-investigator`).
 
 ## Evidence collected before abort
 

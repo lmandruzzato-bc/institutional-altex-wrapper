@@ -1,1 +1,1 @@
-uv run .claude/skills/altex-triaging/scripts/account-discoverer.py --output-path runs/<task_id>/account-discoverer-<ts>.json --account-product-id-src <failed_part.account_src> --account-product-id-dest <failed_part.account_dest>
+uv run .claude/skills/altex-triaging/scripts/collect_account_evidence.py --output-path runs/<task_id>/collect-account-evidence-<ts>.json --account-product-id-src <failed_part.account_src> --account-product-id-dest <failed_part.account_dest>

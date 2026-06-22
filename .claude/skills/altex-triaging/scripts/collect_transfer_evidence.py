@@ -5,18 +5,18 @@
 #   "requests>=2.31",
 # ]
 # ///
-"""transfer-discoverer — read-only fetch of a transfer task from the Settlement
+"""collect_transfer_evidence — read-only fetch of a transfer task from the Settlement
 Engine REST API.
 
 A failed task_id can surface in either the `live` group or the `historical`
 group, and we do not know which. Fetch BOTH, dump each response verbatim, and
 make no decision about which group wins, whether the task exists, or whether an
 HTTP error is fatal — the orchestrator owns all of that. Writes the canonical
-agent-output envelope (`../docs/agent-output-format.md`) to --output-path and
-prints that path.
+agent-output envelope (`.claude/skills/altex-triaging/docs/agent-output-format.md`) to
+--output-path and prints that path.
 
 Usage:
-  uv run scripts/transfer-discoverer.py --output-path PATH --task-id ID
+  uv run scripts/collect_transfer_evidence.py --output-path PATH --task-id ID
 
 Env: ALT_AUTH_TOKEN (required).
 Exit: 0 once the envelope is written (any HTTP/network outcome rides inside it);
@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import _discoverer_common as common  # noqa: E402
+import _collector_common as common  # noqa: E402
 
 TASKS_PATH = "/settlement_engine_api/transfer/tasks"
 GROUPS = ("live", "historical")
@@ -39,9 +39,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Read-only Settlement Engine transfer fetch."
     )
-    parser.add_argument(
-        "--output-path", required=True, help="Absolute path to write the JSON envelope."
-    )
+    common.add_output_arg(parser)
     parser.add_argument(
         "--task-id", required=True, help="Logical transfer task id to fetch."
     )
@@ -53,7 +51,7 @@ def main() -> int:
     results: list = []
     errors: list[str] = []
 
-    # Two entries, in this fixed order: live, then historical.
+    # 2 entries, in this fixed order: live, then historical.
     for group in GROUPS:
         url = common.build_url(
             base,
