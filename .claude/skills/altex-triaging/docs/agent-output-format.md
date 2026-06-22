@@ -1,14 +1,13 @@
 # Agent output format
 
-Every collector run by `/altex-triaging` (sub-agent or script) writes its result as a JSON file to a path the orchestrator pre-computes, then surfaces only that path. The orchestrator reads the file from disk and parses it. This document is the canonical contract for that JSON.
+Every agent run by `/altex-triaging` writes its result as a JSON file to a path the orchestrator pre-computes, then surfaces only that path. The orchestrator reads the surfaced file from disk and parses it. This document is the canonical contract for that JSON.
 
 ## File on disk
 
-- **Where `runs/` lives.** `runs/` is one top-level directory at the **repo root** (the `institutional-altex-wrapper` working tree; git-ignored except `runs/.gitkeep`). The orchestrator runs every script and spawns every sub-agent from that repo root, so it is the one working directory shared by the orchestrator's own writes, the Bash-invoked scripts, and the spawned sub-agents.
-- **Path pattern.** `runs/<task_id>/<agent>-<UTC-timestamp>.json`, **relative to the repo root** — never to the skill directory or to the file that mentions it (e.g. `runs/4827193/account-discoverer-2026-05-23T143211Z.json`). The orchestrator computes this path per spawn and passes it as `output_path` in the spawn prompt; the agent writes there verbatim.
+- **Where `runs/` lives.** `runs/` is one top-level directory at the **repo root** (the `institutional-altex-wrapper` working tree; git-ignored except `runs/.gitkeep`).
+- **Path pattern.** `runs/<task_id>/<agent>-<UTC-timestamp>.json`, **relative to the repo root** — never to the skill directory or to the file that mentions it (e.g. `runs/4827193/collect-account-evidence-2026-05-23T143211Z.json`). The orchestrator computes this path per spawn and passes it as `output_path` in the spawn prompt; the agent writes there verbatim.
 - **Timestamp.** UTC ISO-8601 with `Z` suffix, no colons in the filename portion (e.g. `2026-05-23T143211Z`). It lives only inside the filename — there is no separate `ts` field anywhere.
 - **Format.** Pretty-printed JSON, 2-space indent, UTF-8, trailing newline.
-- **Layout.** Flat under `runs/<task_id>/`.
 
 ### Return-path contract
 
@@ -16,14 +15,14 @@ After writing the file, the agent's chat reply MUST be:
 
 - A single line.
 - The exact `output_path` string the orchestrator passed, verbatim (a repo-root-relative `runs/<task_id>/…` path).
-- No prefix, no preamble, no narration, no markdown, no code-fence.
+- NO prefix, NO preamble, NO narration, NO markdown, NO code-fence.
 
 > [!CRITICAL]
 > The orchestrator pre-creates `runs/<task_id>/` and supplies `output_path`, so the write does not fail in practice — there is no write-failure reply. If a file is somehow absent at the returned path, the orchestrator treats the spawn as having returned no usable evidence and aborts (see `## Failure model`).
 
-### Scripted collectors
+### Scripted evidence collectors
 
-Three collectors are deterministic scripts (`transfer-discoverer`, `account-discoverer`, `instrument-discoverer`), not sub-agents. They write the **identical envelope** to `output_path`, but the return channel differs:
+3 evidence collectors are deterministic scripts (`collect_transfer_evidence`, `collect_account_evidence`, `collect_instrument_evidence`), not sub-agents. They write the **identical envelope** to `output_path`, but the return channel differs:
 
 - The path goes to **stdout**, not a chat reply.
 - A setup failure (bad args, missing env, unwritable path) is signalled by a **non-zero exit with no file written** — not by an empty-`results` envelope.
@@ -32,7 +31,7 @@ The orchestrator reads a non-zero exit as a spawn-layer failure and aborts; on e
 
 ## Top-level shape
 
-Evidence-collection agents have exactly two top-level keys, in this order:
+Evidence-collection agents have exactly 2 top-level keys, in this order:
 
 ```json
 {
@@ -41,14 +40,14 @@ Evidence-collection agents have exactly two top-level keys, in this order:
 }
 ```
 
-`altex-investigator` (Phase 3) additionally carries a third key, `take`, after `results` (see `## take`). Phase 1 agents collect evidence only and omit it.
+`altex-investigator` (Phase 3) additionally carries a third key, `take`, after `results` (see `## take`).
 
 ## `error`
 
-A single plain string. Free prose, not JSON, not an object, not an array.
+A single plain string. Free prose, NOT JSON, NOT an object, NOT an array.
 
 - `""` (empty) means nothing errored. Also `null` is treated as empty.
-- Otherwise it names every failure the agent hit, in plain English — e.g. `"dest query timed out; src + address-book queries ok"` or `"asked to INSERT, refused; ran the read-only queries instead"`.
+- Otherwise it names every failure the agent hit, in plain English — e.g. `"dest query timed out; src + address-book queries ok"`.
 - It is **never itself an abort trigger.** The orchestrator decides abort-vs-continue from `results` (see below), not from this string. The string is for the human reading the report.
 - Which specific unit failed is also visible structurally: the matching `results[]` entry carries `errored: true`.
 
@@ -59,18 +58,18 @@ Zero or more objects, one per attempted unit (query / filter / grep op), in **ch
 | Field | Value |
 |:---|:---|
 | `label` | Stable identifier for the attempted unit (the query label, recipe filter label, or per-grep short name). |
-| `errored` | `true` \| `false`. `true` means this unit failed; `rows` is empty and `error` describes the cause. |
+| `errored` | `true` \| `false`. `true` means this unit failed; `rows` is empty. |
 | `rows` | Array of row objects (possibly empty). Row schema is agent-specific. |
 | `extra` | Object of arbitrary additional agent-specific fields (e.g. `url`, `http_status`, `rows_returned`). |
 
-Each agent documents its own `rows` and `extra` shapes.
+Each agent in `.claude/agents/` documents its own `rows` and `extra` shapes.
 
 ## `take`
 
-A bare JSON string (NOT an object). Present **only on `altex-investigator`** (Phase 3) — forming an interpretation is its job. Phase 1 evidence-collection agents (`transfer-discoverer`, `account-discoverer`, `instrument-discoverer`, `settlement-engine-log-digger`, `transfer-engine-log-digger`, `error-code-resolver`) collect raw data and omit this key entirely; their interpretation, where any exists, lives in structured `results[]` fields, not in prose.
+A bare JSON string (NOT an object). Present **only on `altex-investigator`** (Phase 3) — forming an interpretation is its job. Phase 1 evidence-collection agents/scripts (`collect_transfer_evidence`, `collect_account_evidence`, `collect_instrument_evidence`, `settlement-engine-log-digger`, `transfer-engine-log-digger`, `error-code-resolver`) collect raw data and omit this key entirely; their interpretation, where any exists, lives in structured `results[]` fields, not in prose.
 
 - 2–3 sentences of plain-English interpretation grounded in the rows actually returned.
-- Never an object. The orchestrator does NOT consume `take` as structured data. The `take` is interpretation, not handoff.
+- Never an object.
 
 ## Failure model
 

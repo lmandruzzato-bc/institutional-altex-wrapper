@@ -5,10 +5,10 @@
 #   "requests>=2.31",
 # ]
 # ///
-"""account-discoverer — read-only discovery of account configuration from the
+"""collect_account_evidence — read-only discovery of account configuration from the
 Account REST API.
 
-For each side (src, dest) it runs two dependent GETs against the logical-keyed
+For each side (src, dest) it runs 2 dependent GETs against the logical-keyed
 `/history/...` endpoints (the only ones keyed on the logical id), selecting the
 active version client-side (`valid_to == null`):
 
@@ -16,12 +16,13 @@ active version client-side (`valid_to == null`):
      read its `account_id`
   2. account/history/{account_id}                   -> active parent account
 
-The two sides are independent: a failure on one does not stop the other. Pure
+The 2 sides are independent: a failure on one does not stop the other. Pure
 evidence — no interpretation. Writes the canonical agent-output envelope
-(`../docs/agent-output-format.md`) to --output-path and prints that path.
+(`.claude/skills/altex-triaging/docs/agent-output-format.md`) to --output-path and
+prints that path.
 
 Usage:
-  uv run scripts/account-discoverer.py --output-path PATH \\
+  uv run scripts/collect_account_evidence.py --output-path PATH \\
       --account-product-id-src SRC --account-product-id-dest DEST
 
 Env: ALT_AUTH_TOKEN (required).
@@ -34,7 +35,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import _discoverer_common as common  # noqa: E402
+import _collector_common as common  # noqa: E402
 
 AP_HISTORY = "/account_api/account_product/history/"
 ACCT_HISTORY = "/account_api/account/history/"
@@ -116,9 +117,7 @@ def run_side(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Read-only Account API discovery.")
-    parser.add_argument(
-        "--output-path", required=True, help="Absolute path to write the JSON envelope."
-    )
+    common.add_output_arg(parser)
     parser.add_argument(
         "--account-product-id-src",
         required=True,

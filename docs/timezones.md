@@ -1,6 +1,6 @@
 # Timezones and log time — Altex triage
 
-How time is represented across the Altex systems, and the two places a local-timezone
+How time is represented across the Altex systems, and the 2 places a local-timezone
 offset silently leaks in and makes a correct query return **zero results**. Read this
 before building any time-filtered Loki query or comparing an API/DB timestamp to a log line.
 
@@ -11,7 +11,7 @@ before building any time-filtered Loki query or comparing an API/DB timestamp to
   every altex-DB `datetime` column.
 - **The Loki MCP (`query_loki_logs`) is pure UTC.** Pass `startRfc3339` / `endRfc3339` with a
   `Z` suffix (no offset ⇒ UTC). No conversion, no offset.
-- **Two surfaces leak a host-local offset** (observed `UTC+1` / BST at authoring time). Both
+- **2 surfaces leak a host-local offset** (observed `UTC+1` / BST at authoring time). Both
   are display/serialization artifacts — the underlying stored instant is still UTC:
   1. **The human Grafana / Explore UI** renders and *accepts* times in the browser timezone.
      A hand-typed window is off by the local offset → "0 results" trap.
@@ -56,7 +56,7 @@ consumes.** Do not ask the investigator to do epoch math in its head.
 # orchestrator (Bash) — epoch → RFC3339 UTC, with a clock-skew pad
 python3 - <<'PY'
 from datetime import datetime, timezone, timedelta
-start, end = 1781180267.859191, 1781180267.859191   # the two window-bound instants (epoch secs); which part fields + pad → logging-and-loki §7
+start, end = 1781180267.859191, 1781180267.859191   # the 2 window-bound instants (epoch secs); which part fields + pad → logging-and-loki §7
 pad = timedelta(minutes=5)                            # skew + listener-start latency, per logging-and-loki §7
 f = lambda t: datetime.fromtimestamp(t, timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 print(f(start - pad.total_seconds()), f(end + pad.total_seconds()))

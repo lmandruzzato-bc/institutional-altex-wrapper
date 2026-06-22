@@ -23,7 +23,7 @@ signature:
     - "<literal substring 2, e.g. -2015>"
 last_seen: <YYYY-MM-DD>
 example_task_ids: [<int>, ...]             # 2-5 historical task_ids for cross-reference
-affected_repos: [<repo names from the four service repos>]
+affected_repos: [<repo names from the 4 service repos>]
 ---
 
 ## Root cause
@@ -51,15 +51,14 @@ affected_repos: [<repo names from the four service repos>]
 
 ### Frontmatter field rules
 
-- **`id`** — kebab-case, must equal the filename without `.md`. The index sorts on this.
-- **`title`** — short human-readable summary, ~80 chars max.
+(Field shapes and the `id`-equals-filename rule are in the skeleton above; the rules below are the load-bearing constraints that the skeleton can't show.)
+
 - **`signature.phase`** — one of `transfer`, `source_recon`, `dest_recon`. Lowercase. Underscores (not hyphens) so it matches the failed-phase labels the triage skill uses.
 - **`signature.task_type`** — the operation category from `transfer_task.task_type`: one of `internal`, `external incoming`, `external outgoing` (literal values with spaces). Use `"*"` for any. This is the real category dimension — withdraw-style vs internal-hop vs deposit-style.
 - **`signature.transfer_method`** — the chain/rail value from `transfer_task_part.transfer_method` literally (`BTC`, `ERC20`, `TRC20`, `BEP20`, `Solana`, `TON`, `XRP`, `Silvergate SEN`, `Signature`, `SIGNET`, `BCDC-*` variants, …; ~64 distinct values, NULL for exchange-internal hops). **Not** a category enum. Use `"*"` when the issue is rail-agnostic; let `task_type` + `error_patterns` narrow the match.
 - **`signature.exchange`** — lowercased adapter name (`binance`, `okx`, `bybit`, …). Use `"*"` for any.
 - **`signature.fix_category`** — exactly one of `code_bug`, `optimus_config`, `exchange_config`, `external_service`. These are the buckets the triage report's `Suggested fix` uses.
 - **`signature.error_patterns`** — ordered list of literal greppable substrings. **Not regexes.** The matcher uses these as `|=` filters in Loki and substring/`LIKE` matches in the DB log columns (`txn_log`, `recon_src_log`, `recon_dest_log`).
-- **`last_seen`** — `YYYY-MM-DD`, date of the most recent confirmed occurrence.
 - **`example_task_ids`** — 2–5 historical `task_id`s for cross-reference. Empty list allowed for seed entries.
 - **`affected_repos`** — short names drawn from `transfer-engine`, `settlement-engine`, `exchanges`, `frontend`. Order by likelihood of relevance; the `codebase-locator` agent searches in that order.
 

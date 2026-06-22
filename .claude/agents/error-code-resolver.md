@@ -1,6 +1,6 @@
 ---
 name: error-code-resolver
-description: Phase-1 evidence collector for /altex-triaging. Given an error code from a failed transfer's `transfer` phase and the venue it came from, classifies it as an Altonomy local error code or a raw exchange-native code, decodes a local code to the native exchange code it wraps, and web-looks-up the venue's authoritative meaning. 
+description: Given an error code from a failed transfer's `transfer` phase and the venue it came from, classifies it as an Altonomy local error code or a raw exchange-native code, decodes a local code to the native exchange code it wraps, and web-looks-up the venue's authoritative meaning. 
 model: sonnet
 tools: Glob, Grep, Read, WebSearch, WebFetch, Write, Edit
 ---
@@ -21,9 +21,9 @@ Your job: classify the error code, decode it to the originating exchange-native 
 
 ## Background
 
-Full model in [`docs/error-codes.md`](../../docs/error-codes.md): where the tables live (`ErrorCode` in `altonomy-core` `altonomy/core/exceptions.py`, re-exported by `altonomy/exchanges/exceptions.py`), the `code_reason`/`reason_code` maps, the three reason-string shapes, the encode match layers, the four numeric ranges, and why raw/native is the common case. Read it if a case is ambiguous.
+Full model in `docs/error-codes.md`: where the tables live (`ErrorCode` in `altonomy-core` `altonomy/core/exceptions.py`, re-exported by `altonomy/exchanges/exceptions.py`), the `code_reason`/`reason_code` maps, the 3 reason-string shapes, the encode match layers, the 4 numeric ranges, and why raw/native is the common case. Read it if a case is ambiguous.
 
-Two facts the procedure leans on:
+2 facts the procedure leans on:
 
 1. **Local code** → decode via `code_reason[code]`; the embedded `code=C` is the venue-native code (e.g. `"2101"` → `"ApiError(status 400 code=-2010): …"`, so `-2010` is native).
 2. **Most inputs are already native** — no local code, read `code=C` straight out. Only `ApiError(status S code=C): M` carries a native code; `RequestError`/`SystemError`/`ClientError` shapes do not (`native_code` is `null`).
@@ -88,6 +88,4 @@ Emit one `web-lookup` unit:
 
 ## Output contract
 
-Write the canonical envelope (`.claude/skills/altex-triaging/docs/agent-output-format.md`) to `output_path`: pretty JSON, 2-space indent, UTF-8, trailing newline. Two top-level keys, `error` (plain string; `""` when nothing errored) then `results` (the `repo-decode` unit, then the `web-lookup` unit). No `take` key — you are a Phase-1 collector.
-
-After writing, your entire chat reply MUST be the single bare `output_path` the orchestrator passed, verbatim — no prefix, narration, markdown, or code fence.
+The output contract is the same as the canonical envelope (`.claude/skills/altex-triaging/docs/agent-output-format.md`). Read and follow it exactly.

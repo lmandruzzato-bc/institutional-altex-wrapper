@@ -5,7 +5,7 @@
 #   "requests>=2.31",
 # ]
 # ///
-"""instrument-discoverer — read-only discovery of a token's configuration from
+"""collect_instrument_evidence — read-only discovery of a token's configuration from
 the Instrument REST API.
 
 There is no symbol-keyed endpoint: GET the instrument list and filter
@@ -15,10 +15,11 @@ if more than one is active, keep them all. Zero matches after a 2xx is NOT an
 error — it is the evidence that the symbol is unknown to the platform. Pure
 evidence — no interpretation (no parsing `blockchain_network`, no chain-support
 derivation). Writes the canonical agent-output envelope
-(`../docs/agent-output-format.md`) to --output-path and prints that path.
+(`.claude/skills/altex-triaging/docs/agent-output-format.md`) to --output-path and
+prints that path.
 
 Usage:
-  uv run scripts/instrument-discoverer.py --output-path PATH --asset SYMBOL
+  uv run scripts/collect_instrument_evidence.py --output-path PATH --asset SYMBOL
 
 Env: ALT_AUTH_TOKEN (required).
 Exit: 0 once the envelope is written; non-zero only on setup failure.
@@ -30,16 +31,14 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import _discoverer_common as common  # noqa: E402
+import _collector_common as common  # noqa: E402
 
 INSTRUMENT_LIST = "/instrument_api/instrument/list"
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Read-only Instrument API discovery.")
-    parser.add_argument(
-        "--output-path", required=True, help="Absolute path to write the JSON envelope."
-    )
+    common.add_output_arg(parser)
     parser.add_argument(
         "--asset",
         required=True,
